@@ -17,12 +17,14 @@ app.get("/", (req, res) => {
 });
 
 // ✅ CONEXÃO COM BANCO (COM SSL)
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
-});
+function getPool() {
+  return new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false,
+    },
+  });
+}
 
 // ✅ OPENAI
 const openai = new OpenAI({
