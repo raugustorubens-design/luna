@@ -1,22 +1,28 @@
 import express from "express";
 import pkg from "pg";
 import OpenAI from "openai";
+import cors from "cors";
 
 const { Pool } = pkg;
 
 const app = express();
+
+// ✅ CORS (ESSENCIAL)
+app.use(cors());
+
+// ✅ JSON
 app.use(express.json());
 
-// ✅ LOG DE ERROS GLOBAIS (debug)
+// ✅ LOG DE ERROS GLOBAIS
 process.on("uncaughtException", console.error);
 process.on("unhandledRejection", console.error);
 
-// ✅ ROTA ROOT (ESSENCIAL PRO RAILWAY)
+// ✅ ROTA ROOT
 app.get("/", (req, res) => {
   res.send("API online 🚀");
 });
 
-// ✅ CONEXÃO COM BANCO (COM SSL)
+// ✅ CONEXÃO BANCO
 function getPool() {
   return new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -26,7 +32,7 @@ function getPool() {
   });
 }
 
-// ✅ POOL (CORRIGIDO)
+// ✅ POOL
 const pool = getPool();
 
 // ✅ OPENAI
@@ -34,7 +40,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// ✅ ROTA DEBUG (SUBSTITUI TEMPORARIAMENTE SUA LÓGICA)
+// ✅ ROTA /chat (DEBUG)
 app.post("/chat", async (req, res) => {
   try {
     console.log("📩 bateu no /chat");
