@@ -26,6 +26,9 @@ function getPool() {
   });
 }
 
+// 🔥 CORREÇÃO PRINCIPAL (ANTES FALTAVA ISSO)
+const pool = getPool();
+
 // ✅ OPENAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -122,7 +125,7 @@ Responda direto, claro e útil.
 
     const resposta = completion.choices[0].message.content;
 
-    // 💾 5. Salvar memória
+    // 💾 5. Salvar memória (user)
     const insertRes = await pool.query(
       `INSERT INTO memoria_luna (user_id, role, content)
        VALUES ($1, 'user', $2)
@@ -143,7 +146,7 @@ Responda direto, claro e útil.
       );
     }
 
-    // salvar resposta
+    // 💾 salvar resposta
     await pool.query(
       `INSERT INTO memoria_luna (user_id, role, content)
        VALUES ($1, 'assistant', $2)`,
@@ -159,7 +162,7 @@ Responda direto, claro e útil.
 });
 
 // ✅ PORTA (RAILWAY)
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3000;
 
 console.log("PORT ENV:", PORT);
 
