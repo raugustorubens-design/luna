@@ -37,7 +37,7 @@ const pool = new Pool({
 });
 
 // ==========================
-// OPENAI (futuro uso)
+// OPENAI
 // ==========================
 
 const openai = new OpenAI({
@@ -45,7 +45,7 @@ const openai = new OpenAI({
 });
 
 // ==========================
-// CRIAR TABELA AUTOMATICAMENTE
+// CRIAR TABELA
 // ==========================
 
 async function criarTabelaSeNaoExistir() {
@@ -69,14 +69,13 @@ async function criarTabelaSeNaoExistir() {
 }
 
 // ==========================
-// ROTA /chat (INTELIGENTE)
+// ROTA /chat
 // ==========================
 
 app.post("/chat", async (req, res) => {
   try {
     console.log("📩 REQUEST:", req.body);
 
-    // 🔥 Compatível com frontend antigo e novo
     const message = req.body.message || req.body.mensagem;
     const contexto = req.body.contexto || "sem contexto";
     const user_id = req.body.user_id || "default";
@@ -93,8 +92,6 @@ app.post("/chat", async (req, res) => {
 
     if (message.toLowerCase().includes("erro")) {
       tipo = "erro";
-    } else if (message.toLowerCase().includes("lembra")) {
-      tipo = "memoria";
     }
 
     let memoriaSalva = false;
@@ -111,7 +108,7 @@ app.post("/chat", async (req, res) => {
     }
 
     // ==========================
-    // BUSCAR MEMÓRIAS RECENTES
+    // BUSCAR MEMÓRIA
     // ==========================
 
     const resultado = await pool.query(
@@ -126,7 +123,7 @@ app.post("/chat", async (req, res) => {
     const memorias = resultado.rows;
 
     // ==========================
-    // RESPOSTA INTELIGENTE
+    // RESPOSTA
     // ==========================
 
     const resposta = `
@@ -154,13 +151,42 @@ ${memorias.map(m => `- (${m.tipo}) ${m.conteudo}`).join("\n") || "Nenhuma"}
 });
 
 // ==========================
-// START SERVIDOR
+// ROTA /memoria-eventos (NOVA)
+// ==========================
+
+app.get("/memoria-eventos", async (req, res) => {
+  try {
+    const user_id = req.query.user_id || "default";
+
+    const resultado = await pool.query(
+      `SELECT conteudo, tipo, criado_em
+       FROM memoria_eventos
+       WHERE user_id = $1
+       ORDER BY criado_em DESC
+       LIMIT 20`,
+      [user_id]
+    );
+
+    res.json({
+      memoria: resultado.rows
+    });
+
+  } catch (error) {
+    console.error("🔥 ERRO AO BUSCAR MEMÓRIA:", error);
+
+    res.status(500).json({
+      erro: error.message
+    });
+  }
+});
+
+// ==========================
+// START
 // ==========================
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", async () => {
   console.log("🚀 Luna rodando na porta " + PORT);
-
   await criarTabelaSeNaoExistir();
 });
