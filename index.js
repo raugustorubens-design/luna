@@ -7,45 +7,76 @@ const { Pool } = pkg;
 
 const app = express();
 
-// ✅ CORS
-app.use(cors());
+// ==========================
+// CONFIG BASE
+// ==========================
 
-// ✅ JSON
+app.use(cors());
 app.use(express.json());
 
-// ✅ LOG GLOBAL
 process.on("uncaughtException", console.error);
 process.on("unhandledRejection", console.error);
 
-// ✅ ROOT
+// ==========================
+// ROOT
+// ==========================
+
 app.get("/", (req, res) => {
-  res.send("API Luna online 🚀");
+  res.send("🚀 Luna API online");
 });
 
-// ✅ BANCO
-function getPool() {
-  return new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-      rejectUnauthorized: false,
-    },
-  });
-}
+// ==========================
+// BANCO (POSTGRES)
+// ==========================
 
-const pool = getPool();
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
 
-// ✅ OPENAI (preparado, ainda não usado)
+// ==========================
+// OPENAI (futuro uso)
+// ==========================
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// ✅ ROTA /chat (VERSÃO INTELIGENTE)
+// ==========================
+// CRIAR TABELA AUTOMATICAMENTE
+// ==========================
+
+async function criarTabelaSeNaoExistir() {
+  try {
+    await pool.query(`
+      CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+      CREATE TABLE IF NOT EXISTS memoria_eventos (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id TEXT,
+        conteudo TEXT,
+        tipo TEXT,
+        criado_em TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    console.log("✅ Tabela memoria_eventos pronta");
+  } catch (err) {
+    console.error("Erro ao criar tabela:", err);
+  }
+}
+
+// ==========================
+// ROTA /chat (INTELIGENTE)
+// ==========================
+
 app.post("/chat", async (req, res) => {
   try {
-    console.log("📩 bateu no /chat");
-    console.log("BODY:", req.body);
+    console.log("📩 REQUEST:", req.body);
 
-    // 🔥 aceita ambos formatos (antigo + novo)
+    // 🔥 Compatível com frontend antigo e novo
     const message = req.body.message || req.body.mensagem;
     const contexto = req.body.contexto || "sem contexto";
     const user_id = req.body.user_id || "default";
@@ -54,12 +85,10 @@ app.post("/chat", async (req, res) => {
       return res.status(400).json({ erro: "message é obrigatório" });
     }
 
-    // 🔌 TESTE BANCO
-    console.log("🔌 testando banco...");
-    await pool.query("SELECT 1");
-    console.log("✅ banco ok");
+    // ==========================
+    // DETECTAR MEMÓRIA
+    // ==========================
 
-    // 🧠 DETECTAR MEMÓRIA IMPORTANTE
     let tipo = null;
 
     if (message.toLowerCase().includes("erro")) {
@@ -68,62 +97,70 @@ app.post("/chat", async (req, res) => {
       tipo = "memoria";
     }
 
-    let memoria = null;
+    let memoriaSalva = false;
 
     if (tipo) {
-      memoria = {
-        tipo,
-        conteudo: message,
-        user_id,
-        data: new Date()
-      };
+      await pool.query(
+        `INSERT INTO memoria_eventos (user_id, conteudo, tipo)
+         VALUES ($1, $2, $3)`,
+        [user_id, message, tipo]
+      );
 
-      console.log("💾 Memória detectada:", memoria);
-
-      // (futuro: salvar no Supabase aqui)
+      memoriaSalva = true;
+      console.log("💾 Memória salva no banco");
     }
 
-    // 🧠 PROMPT INTELIGENTE
-    const prompt = `
-Contexto atual:
-${contexto}
+    // ==========================
+    // BUSCAR MEMÓRIAS RECENTES
+    // ==========================
 
-Mensagem do usuário:
-${message}
+    const resultado = await pool.query(
+      `SELECT conteudo, tipo, criado_em
+       FROM memoria_eventos
+       WHERE user_id = $1
+       ORDER BY criado_em DESC
+       LIMIT 5`,
+      [user_id]
+    );
 
-Memória detectada:
-${memoria ? JSON.stringify(memoria) : "nenhuma"}
-`;
+    const memorias = resultado.rows;
 
-    console.log("🧠 PROMPT:", prompt);
+    // ==========================
+    // RESPOSTA INTELIGENTE
+    // ==========================
 
-    // 🔥 RESPOSTA (simulada inteligente)
     const resposta = `
 🧠 Contexto: ${contexto}
 
 💬 Você disse: "${message}"
 
-${memoria ? "💾 Isso foi salvo como algo importante." : ""}
+${memoriaSalva ? "💾 Salvei isso na memória." : ""}
+
+📚 Últimas memórias:
+${memorias.map(m => `- (${m.tipo}) ${m.conteudo}`).join("\n") || "Nenhuma"}
 `;
 
-    return res.json({
+    res.json({
       reply: resposta
     });
 
   } catch (error) {
-    console.error("🔥 ERRO REAL:", error);
+    console.error("🔥 ERRO:", error);
 
-    return res.status(500).json({
+    res.status(500).json({
       erro: error.message
     });
   }
 });
 
-// ✅ PORTA (RAILWAY)
+// ==========================
+// START SERVIDOR
+// ==========================
+
 const PORT = process.env.PORT || 3000;
 
-console.log("PORT ENV:", PORT);
-
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, "0.0.0.0", async () => {
   console.log("🚀 Luna rodando na porta " + PORT);
+
+  await criarTabelaSeNaoExistir();
 });
