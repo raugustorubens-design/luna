@@ -37,7 +37,7 @@ const pool = new Pool({
 });
 
 // ==========================
-// OPENAI
+// OPENAI (PREPARADO)
 // ==========================
 
 const openai = new OpenAI({
@@ -64,7 +64,7 @@ async function criarTabelaSeNaoExistir() {
 
     console.log("✅ Tabela memoria_eventos pronta");
   } catch (err) {
-    console.error("Erro ao criar tabela:", err);
+    console.error("❌ Erro ao criar tabela:", err);
   }
 }
 
@@ -138,11 +138,12 @@ ${memorias.map(m => `- (${m.tipo}) ${m.conteudo}`).join("\n") || "Nenhuma"}
 `;
 
     res.json({
-      reply: resposta
+      reply: resposta,
+      memorias: memorias
     });
 
   } catch (error) {
-    console.error("🔥 ERRO:", error);
+    console.error("🔥 ERRO /chat:", error);
 
     res.status(500).json({
       erro: error.message
@@ -151,7 +152,7 @@ ${memorias.map(m => `- (${m.tipo}) ${m.conteudo}`).join("\n") || "Nenhuma"}
 });
 
 // ==========================
-// ROTA /memoria-eventos (NOVA)
+// ROTA /memoria-eventos
 // ==========================
 
 app.get("/memoria-eventos", async (req, res) => {
@@ -172,7 +173,58 @@ app.get("/memoria-eventos", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("🔥 ERRO AO BUSCAR MEMÓRIA:", error);
+    console.error("🔥 ERRO /memoria-eventos:", error);
+
+    res.status(500).json({
+      erro: error.message
+    });
+  }
+});
+
+// ==========================
+// ROTA /dashboard (NOVA)
+// ==========================
+
+app.get("/dashboard", async (req, res) => {
+  try {
+    const user_id = req.query.user_id || "default";
+
+    // Total de memórias
+    const totalMemorias = await pool.query(
+      `SELECT COUNT(*) FROM memoria_eventos WHERE user_id = $1`,
+      [user_id]
+    );
+
+    // Memórias por tipo
+    const porTipo = await pool.query(
+      `SELECT tipo, COUNT(*) as total
+       FROM memoria_eventos
+       WHERE user_id = $1
+       GROUP BY tipo`,
+      [user_id]
+    );
+
+    // Últimos eventos
+    const recentes = await pool.query(
+      `SELECT conteudo, tipo, criado_em
+       FROM memoria_eventos
+       WHERE user_id = $1
+       ORDER BY criado_em DESC
+       LIMIT 5`,
+      [user_id]
+    );
+
+    res.json({
+      status: "ok",
+      data: {
+        total_memorias: Number(totalMemorias.rows[0].count),
+        por_tipo: porTipo.rows,
+        recentes: recentes.rows
+      }
+    });
+
+  } catch (error) {
+    console.error("🔥 ERRO /dashboard:", error);
 
     res.status(500).json({
       erro: error.message
