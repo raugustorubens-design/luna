@@ -19,20 +19,11 @@ const app = express();
 // ==========================
 
 const pool = new Pool({
-  host: "...",
-  port: 6543,
-  user: "postgres.jdbzhrtovpoaafpytgza",
-  password: process.env.DB_POSTGRESDB_PASSWORD,
-  database: "postgres",
+  connectionString: process.env.DATABASE_URL,
   ssl: {
-    require: true,
     rejectUnauthorized: false,
   },
 });
-
-// 🔥 DEBUG TEMPORÁRIO
-console.log("PASSWORD TYPE:", typeof process.env.DB_POSTGRESDB_PASSWORD);
-console.log("PASSWORD VALUE:", process.env.DB_POSTGRESDB_PASSWORD ? "EXISTE" : "UNDEFINED");
 
 // ==========================
 // CONFIG BASE
