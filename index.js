@@ -206,10 +206,8 @@ ${memorias.map(m => `- (${m.tipo}) ${m.conteudo}`).join("\n") || "Nenhuma"}
 // START
 // ==========================
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, "0.0.0.0", async () => {
-  console.log("🚀 Luna rodando na porta " + PORT);
+app.listen(process.env.PORT || 3000, "0.0.0.0", async () => {
+  console.log("🚀 Luna rodando na porta " + (process.env.PORT || 3000));
 
   await testarConexao();
   await criarTabelaSeNaoExistir();
