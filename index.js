@@ -15,16 +15,21 @@ const { Pool } = pkg;
 const app = express();
 
 // ==========================
-// BANCO (POOL ÚNICO + IPv4)
+// BANCO (CONFIG MANUAL - BLINDADO)
 // ==========================
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  host: "aws-0-us-west-2.pooler.supabase.com",
+  port: 6543,
+  user: "postgres.jdbzhrtovpoaafpytgza", // 🔥 seu project ref
+  password: process.env.DB_PASSWORD,     // 🔥 senha isolada
+  database: "postgres",
   ssl: {
     require: true,
     rejectUnauthorized: false,
   },
   family: 4,
+  connectionTimeoutMillis: 5000,
 });
 
 // ==========================
@@ -206,8 +211,10 @@ ${memorias.map(m => `- (${m.tipo}) ${m.conteudo}`).join("\n") || "Nenhuma"}
 // START
 // ==========================
 
-app.listen(process.env.PORT || 3000, "0.0.0.0", async () => {
-  console.log("🚀 Luna rodando na porta " + (process.env.PORT || 3000));
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, "0.0.0.0", async () => {
+  console.log("🚀 Luna rodando na porta " + PORT);
 
   await testarConexao();
   await criarTabelaSeNaoExistir();
