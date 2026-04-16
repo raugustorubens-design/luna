@@ -8,10 +8,16 @@ import axios from "axios";
 
 const { Pool } = pkg;
 
-// ✅ APP CRIADO
+// ==========================
+// APP
+// ==========================
+
 const app = express();
 
-// 👇 POOL ÚNICO (com IPv4)
+// ==========================
+// BANCO (POOL ÚNICO + IPv4)
+// ==========================
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
