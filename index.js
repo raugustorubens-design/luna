@@ -19,7 +19,7 @@ const app = express();
 // ==========================
 
 const pool = new Pool({
-  host: "aws-0-us-west-2.pooler.supabase.com",
+  host: "...",
   port: 6543,
   user: "postgres.jdbzhrtovpoaafpytgza",
   password: process.env.DB_POSTGRESDB_PASSWORD,
