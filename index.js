@@ -37,26 +37,11 @@ const pool = new Pool({
 });
 
 // ==========================
-// OPENAI (SEGURO)
+// OPENAI (DESATIVADO)
 // ==========================
 
 let openai = null;
-
-if (process.env.OPENAI_API_KEY) {
-  try {
-    const OpenAI = (await import("openai")).default;
-
-    openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-
-    console.log("🤖 OpenAI ativado");
-  } catch (err) {
-    console.error("❌ Erro ao iniciar OpenAI:", err);
-  }
-} else {
-  console.log("⚠️ OpenAI desativado");
-}
+console.log("⚠️ OpenAI desativado");
 
 // ==========================
 // GITHUB CONFIG
@@ -67,7 +52,7 @@ const REPO_OWNER = process.env.REPO_OWNER;
 const REPO_NAME = process.env.REPO_NAME;
 
 // ==========================
-// ROTA GITHUB (NOVA)
+// ROTA GITHUB
 // ==========================
 
 app.get("/api/github/file", async (req, res) => {
