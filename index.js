@@ -26,21 +26,34 @@ app.get("/", (req, res) => {
 });
 
 // ==========================
-// BANCO (POSTGRES)
+// BANCO (POSTGRES - SUPABASE READY)
 // ==========================
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
+    require: true,
     rejectUnauthorized: false,
   },
 });
 
 // ==========================
+// TESTE DE CONEXÃO
+// ==========================
+
+async function testarConexao() {
+  try {
+    await pool.query("SELECT 1");
+    console.log("✅ Conectado ao banco com sucesso");
+  } catch (err) {
+    console.error("❌ Erro ao conectar no banco:", err.message);
+  }
+}
+
+// ==========================
 // OPENAI (DESATIVADO)
 // ==========================
 
-let openai = null;
 console.log("⚠️ OpenAI desativado");
 
 // ==========================
@@ -109,7 +122,7 @@ async function criarTabelaSeNaoExistir() {
 
     console.log("✅ Tabela memoria_eventos pronta");
   } catch (err) {
-    console.error("❌ Erro ao criar tabela:", err);
+    console.error("❌ Erro ao criar tabela:", err.message);
   }
 }
 
@@ -173,7 +186,7 @@ ${memorias.map(m => `- (${m.tipo}) ${m.conteudo}`).join("\n") || "Nenhuma"}
     });
 
   } catch (error) {
-    console.error("🔥 ERRO /chat:", error);
+    console.error("🔥 ERRO /chat:", error.message);
 
     res.status(500).json({
       erro: error.message
@@ -189,5 +202,7 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", async () => {
   console.log("🚀 Luna rodando na porta " + PORT);
+
+  await testarConexao(); // 👈 novo
   await criarTabelaSeNaoExistir();
 });
