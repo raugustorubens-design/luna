@@ -8,8 +8,15 @@ import axios from "axios";
 
 const { Pool } = pkg;
 
-const app = express();
-
+// 👇 FORÇA IPv4 NA CONEXÃO
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    require: true,
+    rejectUnauthorized: false,
+  },
+  family: 4, // 🔥 ESSA LINHA RESOLVE
+});
 // ==========================
 // CONFIG BASE
 // ==========================
