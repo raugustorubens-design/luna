@@ -15,6 +15,19 @@ const { Pool } = pkg;
 const app = express();
 
 // ==========================
+// BANCO (DEBUG)
+// ==========================
+
+console.log("DATABASE_URL:", process.env.DATABASE_URL);
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
+
+// ==========================
 // BANCO (CONFIG MANUAL - BLINDADO)
 // ==========================
 
