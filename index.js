@@ -21,16 +21,18 @@ const app = express();
 const pool = new Pool({
   host: "aws-0-us-west-2.pooler.supabase.com",
   port: 6543,
-  user: "postgres.jdbzhrtovpoaafpytgza", // 🔥 seu project ref
-  password: process.env.DB_POSTGRESDB_PASSWORD, // 🔥 senha isolada
+  user: "postgres.jdbzhrtovpoaafpytgza",
+  password: process.env.DB_POSTGRESDB_PASSWORD,
   database: "postgres",
   ssl: {
     require: true,
     rejectUnauthorized: false,
   },
-  family: 4,
-  connectionTimeoutMillis: 5000,
 });
+
+// 🔥 DEBUG TEMPORÁRIO
+console.log("PASSWORD TYPE:", typeof process.env.DB_POSTGRESDB_PASSWORD);
+console.log("PASSWORD VALUE:", process.env.DB_POSTGRESDB_PASSWORD ? "EXISTE" : "UNDEFINED");
 
 // ==========================
 // CONFIG BASE
