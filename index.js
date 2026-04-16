@@ -8,14 +8,17 @@ import axios from "axios";
 
 const { Pool } = pkg;
 
-// 👇 FORÇA IPv4 NA CONEXÃO
+// ✅ APP CRIADO
+const app = express();
+
+// 👇 POOL ÚNICO (com IPv4)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     require: true,
     rejectUnauthorized: false,
   },
-  family: 4, // 🔥 ESSA LINHA RESOLVE
+  family: 4,
 });
 
 // ==========================
@@ -34,18 +37,6 @@ process.on("unhandledRejection", console.error);
 
 app.get("/", (req, res) => {
   res.send("🚀 Luna API online");
-});
-
-// ==========================
-// BANCO (POSTGRES - SUPABASE READY)
-// ==========================
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    require: true,
-    rejectUnauthorized: false,
-  },
 });
 
 // ==========================
@@ -214,6 +205,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", async () => {
   console.log("🚀 Luna rodando na porta " + PORT);
 
-  await testarConexao(); // 👈 novo
+  await testarConexao();
   await criarTabelaSeNaoExistir();
 });
