@@ -22,7 +22,7 @@ const pool = new Pool({
   host: "aws-0-us-west-2.pooler.supabase.com",
   port: 6543,
   user: "postgres.jdbzhrtovpoaafpytgza", // 🔥 seu project ref
-  password: process.env.DB_PASSWORD,     // 🔥 senha isolada
+  password: process.env.DB_POSTGRESDB_PASSWORD, // 🔥 senha isolada
   database: "postgres",
   ssl: {
     require: true,
