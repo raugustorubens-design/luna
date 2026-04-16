@@ -1,7 +1,7 @@
 import express from "express";
 import pkg from "pg";
-import OpenAI from "openai";
 import cors from "cors";
+import axios from "axios";
 
 const { Pool } = pkg;
 
@@ -37,11 +37,71 @@ const pool = new Pool({
 });
 
 // ==========================
-// OPENAI (PREPARADO)
+// OPENAI (SEGURO)
 // ==========================
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+let openai = null;
+
+if (process.env.OPENAI_API_KEY) {
+  try {
+    const OpenAI = (await import("openai")).default;
+
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    console.log("🤖 OpenAI ativado");
+  } catch (err) {
+    console.error("❌ Erro ao iniciar OpenAI:", err);
+  }
+} else {
+  console.log("⚠️ OpenAI desativado");
+}
+
+// ==========================
+// GITHUB CONFIG
+// ==========================
+
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const REPO_OWNER = process.env.REPO_OWNER;
+const REPO_NAME = process.env.REPO_NAME;
+
+// ==========================
+// ROTA GITHUB (NOVA)
+// ==========================
+
+app.get("/api/github/file", async (req, res) => {
+  try {
+    const { path } = req.query;
+
+    if (!path) {
+      return res.status(400).json({ error: "path é obrigatório" });
+    }
+
+    const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`;
+
+    const response = await axios.get(url, {
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    });
+
+    const content = Buffer.from(response.data.content, "base64").toString("utf-8");
+
+    res.json({
+      path,
+      content,
+      sha: response.data.sha,
+    });
+
+  } catch (error) {
+    console.error("🔥 ERRO GITHUB:", error.response?.data || error.message);
+
+    res.status(500).json({
+      error: "Erro ao buscar arquivo no GitHub"
+    });
+  }
 });
 
 // ==========================
@@ -74,8 +134,6 @@ async function criarTabelaSeNaoExistir() {
 
 app.post("/chat", async (req, res) => {
   try {
-    console.log("📩 REQUEST:", req.body);
-
     const message = req.body.message || req.body.mensagem;
     const contexto = req.body.contexto || "sem contexto";
     const user_id = req.body.user_id || "default";
@@ -83,10 +141,6 @@ app.post("/chat", async (req, res) => {
     if (!message) {
       return res.status(400).json({ erro: "message é obrigatório" });
     }
-
-    // ==========================
-    // DETECTAR MEMÓRIA
-    // ==========================
 
     let tipo = null;
 
@@ -104,12 +158,7 @@ app.post("/chat", async (req, res) => {
       );
 
       memoriaSalva = true;
-      console.log("💾 Memória salva no banco");
     }
-
-    // ==========================
-    // BUSCAR MEMÓRIA
-    // ==========================
 
     const resultado = await pool.query(
       `SELECT conteudo, tipo, criado_em
@@ -121,10 +170,6 @@ app.post("/chat", async (req, res) => {
     );
 
     const memorias = resultado.rows;
-
-    // ==========================
-    // RESPOSTA
-    // ==========================
 
     const resposta = `
 🧠 Contexto: ${contexto}
@@ -139,92 +184,11 @@ ${memorias.map(m => `- (${m.tipo}) ${m.conteudo}`).join("\n") || "Nenhuma"}
 
     res.json({
       reply: resposta,
-      memorias: memorias
+      memorias
     });
 
   } catch (error) {
     console.error("🔥 ERRO /chat:", error);
-
-    res.status(500).json({
-      erro: error.message
-    });
-  }
-});
-
-// ==========================
-// ROTA /memoria-eventos
-// ==========================
-
-app.get("/memoria-eventos", async (req, res) => {
-  try {
-    const user_id = req.query.user_id || "default";
-
-    const resultado = await pool.query(
-      `SELECT conteudo, tipo, criado_em
-       FROM memoria_eventos
-       WHERE user_id = $1
-       ORDER BY criado_em DESC
-       LIMIT 20`,
-      [user_id]
-    );
-
-    res.json({
-      memoria: resultado.rows
-    });
-
-  } catch (error) {
-    console.error("🔥 ERRO /memoria-eventos:", error);
-
-    res.status(500).json({
-      erro: error.message
-    });
-  }
-});
-
-// ==========================
-// ROTA /dashboard (NOVA)
-// ==========================
-
-app.get("/dashboard", async (req, res) => {
-  try {
-    const user_id = req.query.user_id || "default";
-
-    // Total de memórias
-    const totalMemorias = await pool.query(
-      `SELECT COUNT(*) FROM memoria_eventos WHERE user_id = $1`,
-      [user_id]
-    );
-
-    // Memórias por tipo
-    const porTipo = await pool.query(
-      `SELECT tipo, COUNT(*) as total
-       FROM memoria_eventos
-       WHERE user_id = $1
-       GROUP BY tipo`,
-      [user_id]
-    );
-
-    // Últimos eventos
-    const recentes = await pool.query(
-      `SELECT conteudo, tipo, criado_em
-       FROM memoria_eventos
-       WHERE user_id = $1
-       ORDER BY criado_em DESC
-       LIMIT 5`,
-      [user_id]
-    );
-
-    res.json({
-      status: "ok",
-      data: {
-        total_memorias: Number(totalMemorias.rows[0].count),
-        por_tipo: porTipo.rows,
-        recentes: recentes.rows
-      }
-    });
-
-  } catch (error) {
-    console.error("🔥 ERRO /dashboard:", error);
 
     res.status(500).json({
       erro: error.message
