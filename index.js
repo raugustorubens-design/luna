@@ -17,6 +17,7 @@ const pool = new Pool({
   },
   family: 4, // 🔥 ESSA LINHA RESOLVE
 });
+
 // ==========================
 // CONFIG BASE
 // ==========================
