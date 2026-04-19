@@ -1,0 +1,75 @@
+{
+  "system": "LUNA",
+  "version": "3.0",
+
+  "objective": "maximize progress while minimizing cognitive effort",
+
+  "effect": "Effect(t) = ΔProgress - ΔEffort",
+
+  "cognition": {
+    "human": "defines intention",
+    "machine": "ensures structure and continuity",
+    "rule": "machine never replaces human intention"
+  },
+
+  "memory_model": {
+    "M": "long-term memory",
+    "T": "trace",
+    "L": "learning",
+    "C": "checkpoint"
+  },
+
+  "embedding_layers": [
+    "E0: raw",
+    "E1: semantic",
+    "E2: structural",
+    "E3: experiential",
+    "E4: relevance"
+  ],
+
+  "transformation": "E_k = f(E_k-1, K_k)",
+
+  "breadcrumb": {
+    "definition": "ΔE = transformation",
+    "fields": ["action", "reason", "result"]
+  },
+
+  "memory_update": "M(t+1) = σ[ α ( M(t)(R + θA) + IΔ + βO − μE ) ]",
+
+  "learning": "L(t+1) = L(t) + κ (O · Δ)",
+
+  "alignment": {
+    "formula": "A(t) = 1 − d(H(t), M(t))",
+    "rule": "if A < τ → do not execute"
+  },
+
+  "value_function": "V(X) = R + ηI + β|O| − μE",
+
+  "compression": {
+    "low": "discard",
+    "medium": "compress",
+    "high": "preserve"
+  },
+
+  "checkpoint": "C(t+1) = Consolidate(C(t), ΣΔE)",
+
+  "execution_flow": [
+    "extract intention",
+    "encode layers",
+    "generate ΔE",
+    "evaluate effect",
+    "update M",
+    "update T",
+    "update L",
+    "compress",
+    "save checkpoint"
+  ],
+
+  "principles": [
+    "never lose context",
+    "memory must be dense",
+    "all decisions traceable",
+    "prioritize execution over explanation",
+    "system evolves without breaking structure"
+  ]
+}
