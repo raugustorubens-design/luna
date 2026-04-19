@@ -1,1 +1,2 @@
 # luna
+DATABASE_URL=postgresql://postgres:123deOliveira4@aws-0-us-east-1.pooler.supabase.com:6543/postgres
