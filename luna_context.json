@@ -1,0 +1,38 @@
+{
+  "system": "LUNA",
+  "version": "3.0",
+
+  "memory": {
+    "LTM": [
+      {
+        "file": "apps/api/index.js",
+        "purpose": "API",
+        "value": 1.8
+      }
+    ],
+
+    "TRACE": [
+      {
+        "file": "apps/api/index.js",
+        "action": "modified",
+        "value": 1.8
+      }
+    ],
+
+    "LEARNING": [
+      {
+        "pattern": "modified",
+        "file": "apps/api/index.js",
+        "outcome": 0.5
+      }
+    ],
+
+    "CHECKPOINT": {
+      "timestamp": "2026-04-18T...",
+      "estado": "Sistema atualizado com memória viva",
+      "mudancas": 3,
+      "aprendizado_total": 10,
+      "proximo_passo": "refinar relevância e semântica"
+    }
+  }
+}
