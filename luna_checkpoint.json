@@ -1,0 +1,91 @@
+{
+  "checkpoint": {
+    "timestamp": "auto",
+
+    "estado": "Monorepo LUNA estabilizado com frontend integrado (Front-View), backend (API), core cognitivo e sistema de memória estruturado",
+
+    "intencao": "Construir sistema cognitivo completo com continuidade, eliminando retrabalho e conectando interface, lógica e memória",
+
+    "trajetoria": [
+      "identificação de falha estrutural (repos separados)",
+      "criação de monorepo LUNA",
+      "integração apps/api e apps/core",
+      "criação do luna_engine (memória dinâmica)",
+      "criação do luna_context (estado persistente)",
+      "criação do luna_core (modelo cognitivo)",
+      "falha ao integrar frontend via repo vazio",
+      "descoberta do frontend real (Front-View)",
+      "integração manual via clone + move",
+      "remoção de sub-repo embutido (git rm -r --cached)",
+      "limpeza do histórico git",
+      "push final com estrutura corrigida"
+    ],
+
+    "breadcrumbs": [
+      {
+        "de": "multi-repos desconectados",
+        "para": "monorepo unificado",
+        "acao": "merge estrutural",
+        "resultado": "continuidade sistêmica"
+      },
+      {
+        "de": "frontend ausente",
+        "para": "frontend integrado",
+        "acao": "clone + move + cleanup",
+        "resultado": "interface conectável"
+      },
+      {
+        "de": "repo quebrado (submodule)",
+        "para": "repo limpo",
+        "acao": "git rm -r --cached",
+        "resultado": "deploy possível"
+      }
+    ],
+
+    "aprendizado": [
+      "subtree pode ser overkill — clone + move resolve rápido",
+      "repositório dentro de repositório quebra o sistema",
+      "frontend precisa estar no monorepo para continuidade real",
+      "memória deve ser externa à IA (luna_context)",
+      "separar core (imutável) de context (mutável) é essencial",
+      "debug estrutural consome mais tempo que código",
+      "continuidade depende de checkpoint, não de memória implícita"
+    ],
+
+    "formulas": {
+      "effect": "Effect(t) = ΔProgress − ΔEffort",
+      "memory": "M(t+1) = σ[ α ( M(t)(R + θA) + IΔ + βO − μE ) ]",
+      "learning": "L(t+1) = L(t) + κ (O · Δ)",
+      "value": "V(X) = R + ηI + β|O| − μE",
+      "checkpoint": "C(t+1) = Consolidate(C(t), ΣΔE)"
+    },
+
+    "estado_atual": {
+      "frontend": "integrado em apps/frontend",
+      "backend": "apps/api pronto",
+      "core": "apps/core funcional",
+      "memoria": "luna_context.json ativo",
+      "engine": "luna_engine.py rodando",
+      "core_model": "luna_core.json definido",
+      "git": "limpo e sincronizado"
+    },
+
+    "proximo_passo": "rodar frontend e conectar com endpoint /chat da API",
+
+    "densidade_memoria": "alta",
+    "status": "checkpoint válido e consolidado"
+  }
+}
+
+{
+  "system": "LUNA",
+  "version": "3.0",
+  "memory": {
+    "LTM": [...],
+    "TRACE": [...],
+    "LEARNING": [...],
+    "CHECKPOINT": {
+      "...": "..."
+    }
+  }
+}
