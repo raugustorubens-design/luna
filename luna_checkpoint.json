@@ -1,24 +1,34 @@
 {
   "checkpoint": {
-    "timestamp": "auto",
+    "timestamp": "2026-05-09",
 
-    "estado": "Monorepo LUNA estabilizado com frontend integrado (Front-View), backend (API), core cognitivo e sistema de memória estruturado",
+    "estado": "LUNA consolidado como middleware cognitivo modular com monorepo estável, frontend operacional, backend persistente conectado ao Supabase e início formal da separação do núcleo cognitivo",
 
-    "intencao": "Construir sistema cognitivo completo com continuidade, eliminando retrabalho e conectando interface, lógica e memória",
+    "intencao": "Transformar o LUNA em um sistema cognitivo persistente e adaptativo com memória estruturada, orchestration layer, context engine e continuidade evolutiva entre frontend, backend e IA",
 
     "trajetoria": [
-      "identificação de falha estrutural (repos separados)",
-      "criação de monorepo LUNA",
-      "integração apps/api e apps/core",
-      "criação do luna_engine (memória dinâmica)",
-      "criação do luna_context (estado persistente)",
-      "criação do luna_core (modelo cognitivo)",
-      "falha ao integrar frontend via repo vazio",
-      "descoberta do frontend real (Front-View)",
-      "integração manual via clone + move",
-      "remoção de sub-repo embutido (git rm -r --cached)",
-      "limpeza do histórico git",
-      "push final com estrutura corrigida"
+      "identificação da fragmentação estrutural em múltiplos repositórios",
+      "criação do monorepo LUNA",
+      "integração de apps/api, apps/core e apps/frontend",
+      "estruturação do luna_engine para memória dinâmica",
+      "criação do luna_context como memória persistente externa",
+      "definição do luna_core como núcleo cognitivo",
+      "integração manual do frontend Front-View",
+      "remoção de submodule embutido e limpeza git",
+      "estabilização da estrutura monorepo",
+      "migração do backend principal para artifacts/api-server",
+      "integração OpenAPI entre frontend e backend",
+      "implementação inicial de conversations/messages",
+      "integração React Query e API client gerado",
+      "implementação do orb visual e interface operacional",
+      "resolução de falhas críticas de SSL Supabase",
+      "correção de autenticação PostgreSQL",
+      "correção de parsing do pooler Supabase",
+      "estabilização da conexão PG com SSL funcional",
+      "validação completa do backend com pool conectado",
+      "identificação do erro estrutural no insert da tabela conversations",
+      "decisão arquitetural de separar API do núcleo cognitivo",
+      "início formal da transição para engenharia cognitiva persistente"
     ],
 
     "breadcrumbs": [
@@ -32,24 +42,49 @@
         "de": "frontend ausente",
         "para": "frontend integrado",
         "acao": "clone + move + cleanup",
-        "resultado": "interface conectável"
+        "resultado": "interface operacional"
       },
       {
         "de": "repo quebrado (submodule)",
         "para": "repo limpo",
         "acao": "git rm -r --cached",
-        "resultado": "deploy possível"
+        "resultado": "deploy funcional"
+      },
+      {
+        "de": "backend fragmentado",
+        "para": "backend oficial definido",
+        "acao": "padronização em artifacts/api-server",
+        "resultado": "estrutura operacional única"
+      },
+      {
+        "de": "falha de conexão PostgreSQL",
+        "para": "pool estável conectado",
+        "acao": "ajuste SSL + pooler + auth",
+        "resultado": "persistência funcional"
+      },
+      {
+        "de": "endpoint monolítico",
+        "para": "pipeline cognitivo modular",
+        "acao": "separação arquitetural",
+        "resultado": "base para cognição persistente"
       }
     ],
 
     "aprendizado": [
-      "subtree pode ser overkill — clone + move resolve rápido",
-      "repositório dentro de repositório quebra o sistema",
-      "frontend precisa estar no monorepo para continuidade real",
-      "memória deve ser externa à IA (luna_context)",
-      "separar core (imutável) de context (mutável) é essencial",
-      "debug estrutural consome mais tempo que código",
-      "continuidade depende de checkpoint, não de memória implícita"
+      "subtree pode gerar complexidade desnecessária",
+      "clone + move resolve integração estrutural rapidamente",
+      "repositório dentro de repositório quebra continuidade",
+      "frontend precisa estar dentro do monorepo",
+      "memória deve existir fora do modelo IA",
+      "core imutável e context mutável devem ser separados",
+      "infraestrutura funcional não significa cognição funcional",
+      "debug estrutural consome mais tempo que implementação",
+      "persistência deve ser estabilizada antes de embeddings",
+      "HTTP endpoint não deve conter lógica cognitiva",
+      "pipeline cognitivo deve existir independente do provider IA",
+      "LUNA não é um wrapper GPT — é um middleware cognitivo",
+      "continuidade depende de checkpoints explícitos",
+      "arquitetura correta reduz retrabalho exponencialmente"
     ],
 
     "formulas": {
@@ -57,35 +92,95 @@
       "memory": "M(t+1) = σ[ α ( M(t)(R + θA) + IΔ + βO − μE ) ]",
       "learning": "L(t+1) = L(t) + κ (O · Δ)",
       "value": "V(X) = R + ηI + β|O| − μE",
-      "checkpoint": "C(t+1) = Consolidate(C(t), ΣΔE)"
+      "checkpoint": "C(t+1) = Consolidate(C(t), ΣΔE)",
+      "pipeline": "Input → Retrieve → Contextualize → Respond → Extract → Persist",
+      "memory_core": "Score = R + ηI − μE"
+    },
+
+    "arquitetura": {
+      "tipo": "middleware cognitivo modular",
+      "fluxo": [
+        "Frontend",
+        "LUNA Core",
+        "Context Engine",
+        "Memory Engine",
+        "Decision Engine",
+        "AI Router",
+        "Providers IA",
+        "Supabase"
+      ],
+      "providers": [
+        "OpenAI",
+        "Claude",
+        "Groq",
+        "providers futuros"
+      ]
+    },
+
+    "estrutura": {
+      "monorepo": true,
+      "apps": [
+        "apps/frontend",
+        "apps/api",
+        "apps/core"
+      ],
+      "artifacts": [
+        "artifacts/frontend",
+        "artifacts/api-server",
+        "artifacts/sandbox"
+      ],
+      "luna_modules": [
+        "luna_engine",
+        "luna_context",
+        "luna_core"
+      ]
     },
 
     "estado_atual": {
-      "frontend": "integrado em apps/frontend",
-      "backend": "apps/api pronto",
-      "core": "apps/core funcional",
-      "memoria": "luna_context.json ativo",
-      "engine": "luna_engine.py rodando",
-      "core_model": "luna_core.json definido",
-      "git": "limpo e sincronizado"
+      "frontend": "operacional com UI integrada e orb visual",
+      "backend": "subindo corretamente com PostgreSQL funcional",
+      "persistencia": "Supabase conectado com SSL validado",
+      "core": "estrutura cognitiva parcialmente definida",
+      "pipeline": "conceitualmente definido",
+      "memoria": "persistente e externa ao modelo IA",
+      "context_engine": "conceitual",
+      "decision_engine": "conceitual",
+      "multi_ai": "não implementado",
+      "embeddings": "não iniciado",
+      "git": "limpo e sincronizado",
+      "openapi": "integrado",
+      "react_query": "ativo",
+      "api_client": "gerado"
     },
 
-    "proximo_passo": "rodar frontend e conectar com endpoint /chat da API",
+    "problema_atual": {
+      "erro": "insert into conversations (title)",
+      "tipo": "estrutural",
+      "suspeitas": [
+        "schema inconsistente",
+        "migration divergente",
+        "namespace incorreto",
+        "runtime Drizzle desalinhado",
+        "tabela conversations incompatível"
+      ],
+      "status": "infraestrutura validada, persistência parcial"
+    },
 
-    "densidade_memoria": "alta",
-    "status": "checkpoint válido e consolidado"
-  }
-}
+    "pipeline_cognitivo": {
+      "fluxo": [
+        "retrieve_memory()",
+        "build_context()",
+        "call_provider()",
+        "extract_signals()",
+        "store_memory()"
+      ],
+      "objetivo": "cognição persistente adaptativa"
+    },
 
-{
-  "system": "LUNA",
-  "version": "3.0",
-  "memory": {
-    "LTM": [...],
-    "TRACE": [...],
-    "LEARNING": [...],
-    "CHECKPOINT": {
-      "...": "..."
-    }
+    "proximo_passo": "resolver definitivamente a persistência da tabela conversations e iniciar separação formal do núcleo cognitivo em memory.ts, context.ts, pipeline.ts e signals.ts",
+
+    "densidade_memoria": "muito alta",
+
+    "status": "checkpoint consolidado e operacional"
   }
 }
