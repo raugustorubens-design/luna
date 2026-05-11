@@ -1,16 +1,49 @@
+import "dotenv/config";
+
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import * as schema from "./schema";
+
+import * as schema from "./schema.ts";
 
 const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
-}
+// ================= ENV =================
+console.log("DATABASE_URL:", process.env.DATABASE_URL);
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool, { schema });
+// ================= POOL =================
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
 
-export * from "./schema";
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
+
+pool.on("error", (err) => {
+  console.error("PG POOL ERROR:", err);
+});
+
+// ================= TESTE RAW =================
+(async () => {
+  try {
+    const client = await pool.connect();
+
+    const result = await client.query("select now()");
+
+    console.log("PG CONNECTED:", result.rows);
+
+    client.release();
+
+  } catch (err) {
+
+    console.error("PG RAW ERROR:", err);
+  }
+})();
+
+// ================= DB =================
+export const db = drizzle(pool, {
+  schema,
+});
+
+// ================= EXPORTS =================
+export * from "./schema.ts";

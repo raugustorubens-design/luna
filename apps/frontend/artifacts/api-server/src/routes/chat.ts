@@ -1,6 +1,8 @@
+import { runLunaPipeline } from "../luna/pipeline";
 import { Router, type IRouter } from "express";
 import { eq, sql, count } from "drizzle-orm";
 import { db, conversationsTable, messagesTable } from "@workspace/db";
+
 import {
   SendMessageBody,
   SendMessageResponse,
@@ -16,8 +18,10 @@ import {
 
 const router: IRouter = Router();
 
+// ================= CHAT =================
 router.post("/chat", async (req, res): Promise<void> => {
   const parsed = SendMessageBody.safeParse(req.body);
+
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -25,34 +29,114 @@ router.post("/chat", async (req, res): Promise<void> => {
 
   const { content, conversationId } = parsed.data;
 
-  let convId: number;
+  let convId: string;
+
+  // ================= CONVERSA =================
   if (conversationId) {
-    convId = parseInt(conversationId, 10);
+    convId = conversationId;
   } else {
-    const [conv] = await db
-      .insert(conversationsTable)
-      .values({ title: content.slice(0, 60) })
-      .returning();
-    convId = conv.id;
+    try {
+      const [createdConv] = await db
+        .insert(conversationsTable)
+        .values({
+          title: content.slice(0, 60),
+        })
+        .returning();
+
+      console.log("CONVERSATION CREATED:", createdConv);
+
+      convId = createdConv.id;
+    } catch (err: any) {
+      console.error("========== POSTGRES ERROR ==========");
+      console.error(err);
+      console.error("MESSAGE:", err?.message);
+      console.error("DETAIL:", err?.detail);
+      console.error("CODE:", err?.code);
+      console.error("STACK:", err?.stack);
+
+      res.status(500).json({
+        error: err?.message,
+        detail: err?.detail,
+        code: err?.code,
+        stack: err?.stack,
+      });
+
+      return;
+    }
   }
 
-  await db.insert(messagesTable).values({
-    conversationId: convId,
-    role: "user",
-    content,
-  });
+  // ================= SALVA USER =================
+  try {
 
-  const aiReply = `Resposta da IA para: "${content}". Este é um sistema de IA especializado operando no nível máximo.`;
+    await db.execute(sql`
+    INSERT INTO messages (
+      conversation_id,
+      topic,
+      role,
+      extension,
+      content
+    )
+    VALUES (
+      ${convId},
+      ${"luna_chat"},
+      ${"user"},
+      ${"text"},
+      ${content}
+    )
+  `);
 
+    console.log("USER MESSAGE SAVED");
+
+  } catch (err: any) {
+
+    console.error("========== MESSAGE INSERT ERROR ==========");
+
+    console.error(err);
+
+    console.error("MESSAGE:", err?.message);
+
+    console.error("DETAIL:", err?.detail);
+
+    console.error("CODE:", err?.code);
+
+    console.error("STACK:", err?.stack);
+
+    res.status(500).json({
+      error: err?.message,
+      detail: err?.detail,
+      code: err?.code,
+      stack: err?.stack,
+    });
+
+    return;
+  }
+
+  // ================= LUNA CORE =================
+  const lunaResponse = await runLunaPipeline(content);
+
+  const aiReply = lunaResponse.reply;
+
+  // ================= SALVA RESPOSTA =================
   const [assistantMsg] = await db
     .insert(messagesTable)
     .values({
       conversationId: convId,
+
+      topic: "luna_chat",
+
       role: "assistant",
+
+      extension: "text",
+
       content: aiReply,
+
+      payload: {} as any,
+
+      private: false,
     })
     .returning();
 
+  // ================= RESPONSE =================
   res.json(
     SendMessageResponse.parse({
       id: String(assistantMsg.id),
@@ -64,6 +148,7 @@ router.post("/chat", async (req, res): Promise<void> => {
   );
 });
 
+// ================= LISTAR CONVERSAS =================
 router.get("/conversations", async (_req, res): Promise<void> => {
   const conversations = await db
     .select({
@@ -74,7 +159,10 @@ router.get("/conversations", async (_req, res): Promise<void> => {
       messageCount: count(messagesTable.id),
     })
     .from(conversationsTable)
-    .leftJoin(messagesTable, eq(messagesTable.conversationId, conversationsTable.id))
+    .leftJoin(
+      messagesTable,
+      eq(messagesTable.conversationId, conversationsTable.id)
+    )
     .groupBy(conversationsTable.id)
     .orderBy(sql`${conversationsTable.updatedAt} desc`);
 
@@ -88,8 +176,10 @@ router.get("/conversations", async (_req, res): Promise<void> => {
   );
 });
 
+// ================= CRIAR CONVERSA =================
 router.post("/conversations", async (req, res): Promise<void> => {
   const parsed = CreateConversationBody.safeParse(req.body);
+
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -97,7 +187,9 @@ router.post("/conversations", async (req, res): Promise<void> => {
 
   const [conv] = await db
     .insert(conversationsTable)
-    .values({ title: parsed.data.title })
+    .values({
+      title: parsed.data.title,
+    })
     .returning();
 
   res.status(201).json(
@@ -111,14 +203,17 @@ router.post("/conversations", async (req, res): Promise<void> => {
   );
 });
 
+// ================= BUSCAR CONVERSA =================
 router.get("/conversations/:id", async (req, res): Promise<void> => {
   const params = GetConversationParams.safeParse(req.params);
+
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
 
-  const numId = parseInt(params.data.id, 10);
+  const id = params.data.id;
+
   const [conv] = await db
     .select({
       id: conversationsTable.id,
@@ -128,8 +223,11 @@ router.get("/conversations/:id", async (req, res): Promise<void> => {
       messageCount: count(messagesTable.id),
     })
     .from(conversationsTable)
-    .leftJoin(messagesTable, eq(messagesTable.conversationId, conversationsTable.id))
-    .where(eq(conversationsTable.id, numId))
+    .leftJoin(
+      messagesTable,
+      eq(messagesTable.conversationId, conversationsTable.id)
+    )
+    .where(eq(conversationsTable.id, id))
     .groupBy(conversationsTable.id);
 
   if (!conv) {
@@ -145,17 +243,20 @@ router.get("/conversations/:id", async (req, res): Promise<void> => {
   );
 });
 
+// ================= DELETAR CONVERSA =================
 router.delete("/conversations/:id", async (req, res): Promise<void> => {
   const params = DeleteConversationParams.safeParse(req.params);
+
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
 
-  const numId = parseInt(params.data.id, 10);
+  const id = params.data.id;
+
   const [deleted] = await db
     .delete(conversationsTable)
-    .where(eq(conversationsTable.id, numId))
+    .where(eq(conversationsTable.id, id))
     .returning();
 
   if (!deleted) {
@@ -166,18 +267,21 @@ router.delete("/conversations/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
+// ================= MENSAGENS =================
 router.get("/conversations/:id/messages", async (req, res): Promise<void> => {
   const params = GetMessagesParams.safeParse(req.params);
+
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
 
-  const numId = parseInt(params.data.id, 10);
+  const id = params.data.id;
+
   const messages = await db
     .select()
     .from(messagesTable)
-    .where(eq(messagesTable.conversationId, numId))
+    .where(eq(messagesTable.conversationId, id))
     .orderBy(messagesTable.createdAt);
 
   res.json(
@@ -191,12 +295,20 @@ router.get("/conversations/:id/messages", async (req, res): Promise<void> => {
   );
 });
 
+// ================= STATS =================
 router.get("/stats", async (_req, res): Promise<void> => {
-  const [convCount] = await db.select({ value: count() }).from(conversationsTable);
-  const [msgCount] = await db.select({ value: count() }).from(messagesTable);
+  const [convCount] = await db
+    .select({ value: count() })
+    .from(conversationsTable);
+
+  const [msgCount] = await db
+    .select({ value: count() })
+    .from(messagesTable);
 
   const today = new Date();
+
   today.setHours(0, 0, 0, 0);
+
   const [activeToday] = await db
     .select({ value: count() })
     .from(conversationsTable)
