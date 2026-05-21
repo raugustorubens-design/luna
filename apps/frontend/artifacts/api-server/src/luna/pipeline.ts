@@ -2,6 +2,7 @@
 
 import { retrieveMemory, storeMemory } from "./memory";
 import { buildContext } from "./context";
+import { ProviderRouter } from "./provider";
 
 export async function runLunaPipeline(message: string) {
 
@@ -15,9 +16,15 @@ export async function runLunaPipeline(message: string) {
 
   console.log("CONTEXT:", context);
 
-  // 3. Placeholder IA
+  // 3. Execução real via provider
+  const providerRouter = new ProviderRouter();
+  const aiReply = await providerRouter.execute({
+    message,
+    context,
+  });
+
   const response = {
-    reply: `LUNA RESPONSE: ${message}`,
+    reply: aiReply,
   };
 
   // 4. Salva memória
