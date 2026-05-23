@@ -252,6 +252,12 @@ Ideal interaction model:
 - **Memory checkpoint:** Consolidated layered memory model and reconstruction-first principle.
 - **Identity checkpoint:** Preserved distributed-coherence identity principles and trust/reliability priority.
 
+
+### 2026-05-23 — Longitudinal memory protocol v1 reaffirmed
+
+- **Continuity checkpoint:** Reaffirmed the full longitudinal memory doctrine in-session and preserved it as the canonical repository baseline without architectural rupture.
+- **Integrity checkpoint:** Revalidated sovereign runtime ownership (`apps/frontend/artifacts/api-server`), reconstructive memory principle, and anti-hype operating posture.
+
 ## 16. OPERATING RULES FOR FUTURE UPDATES
 
 Every future update must:
