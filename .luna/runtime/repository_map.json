@@ -1,0 +1,53 @@
+{
+  "workspace": {
+    "name": "luna",
+    "path": "/workspaces/luna",
+    "status": "alive",
+    "description": "Workspace principal do organismo LUNA"
+  },
+  "applications": [
+    {
+      "name": "apps/core",
+      "type": "fastapi",
+      "status": "embryo",
+      "role": "future_luna_core_api"
+    },
+    {
+      "name": "apps/api",
+      "type": "fastapi_node_hybrid",
+      "status": "alive",
+      "role": "ai_gateway"
+    },
+    {
+      "name": "apps/frontend",
+      "type": "react_vite_typescript",
+      "status": "alive",
+      "role": "canonical_frontend"
+    }
+  ],
+  "knowledge": [
+    {
+      "name": "luna_core",
+      "status": "alive",
+      "role": "cognitive_genome"
+    },
+    {
+      "name": "luna_context",
+      "status": "alive",
+      "role": "operational_memory"
+    },
+    {
+      "name": ".luna/runtime",
+      "status": "alive",
+      "role": "runtime_audit"
+    }
+  ],
+  "historical_artifacts": [
+    {
+      "name": "luna-frontend",
+      "status": "migrated",
+      "role": "historical_frontend",
+      "canonical_replacement": "apps/frontend"
+    }
+  ]
+}

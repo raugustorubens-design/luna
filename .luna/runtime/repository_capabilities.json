@@ -1,0 +1,48 @@
+{
+  "cells": {
+    "MemoryCell": {
+      "status": "alive",
+      "locations": [
+        "apps/frontend/artifacts/api-server/src/luna/memory.ts",
+        "luna_context"
+      ]
+    },
+    "ContextCell": {
+      "status": "alive",
+      "locations": [
+        "apps/frontend/artifacts/api-server/src/luna/context.ts"
+      ]
+    },
+    "PipelineCell": {
+      "status": "alive",
+      "locations": [
+        "apps/frontend/artifacts/api-server/src/luna/pipeline.ts"
+      ]
+    },
+    "ProviderCell": {
+      "status": "alive",
+      "locations": [
+        "apps/frontend/artifacts/api-server/src/luna/provider.ts"
+      ]
+    },
+    "AIGatewayCell": {
+      "status": "alive",
+      "locations": [
+        "apps/api/core/ai_gateway"
+      ]
+    },
+    "TrainingCell": {
+      "status": "embryo",
+      "locations": [
+        "apps/core/main.py"
+      ]
+    },
+    "ObservabilityCell": {
+      "status": "embryo",
+      "locations": [
+        ".luna/runtime",
+        "Reporter"
+      ]
+    }
+  }
+}
