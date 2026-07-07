@@ -168,7 +168,7 @@ router.get("/conversations", async (_req, res): Promise<void> => {
 
   res.json(
     GetConversationsResponse.parse(
-      conversations.map((c) => ({
+      conversations.map((c: { id: unknown }) => ({
         ...c,
         id: String(c.id),
       }))
@@ -286,7 +286,7 @@ router.get("/conversations/:id/messages", async (req, res): Promise<void> => {
 
   res.json(
     GetMessagesResponse.parse(
-      messages.map((m) => ({
+      messages.map((m: { id: unknown; conversationId: unknown }) => ({
         ...m,
         id: String(m.id),
         conversationId: String(m.conversationId),
