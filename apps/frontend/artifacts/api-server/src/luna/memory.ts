@@ -1,24 +1,24 @@
+import { logger } from "../lib/logger";
 import { supabase } from "../lib/supabase";
+import type { LunaMemoryRecord } from "./contracts";
 
-export async function storeMemory(memory: any) {
-  const { error } = await supabase
-    .from("memoria_luna")
-    .insert([
-      {
-        tipo: memory.tipo,
-        contexto: memory.contexto,
-        conteudo: memory.conteudo,
-        titulo: memory.titulo,
-        empresa_id: memory.empresa_id,
-      },
-    ]);
+export async function storeMemory(memory: LunaMemoryRecord): Promise<void> {
+  const { error } = await supabase.from("memoria_luna").insert([
+    {
+      tipo: memory.tipo,
+      contexto: memory.contexto,
+      conteudo: memory.conteudo,
+      titulo: memory.titulo,
+      empresa_id: memory.empresa_id,
+    },
+  ]);
 
   if (error) {
-    console.error("STORE MEMORY ERROR:", error);
+    logger.error({ err: error }, "STORE MEMORY ERROR");
   }
 }
 
-export async function retrieveMemory(query: string) {
+export async function retrieveMemory(_query: string): Promise<LunaMemoryRecord[]> {
   const { data, error } = await supabase
     .from("memoria_luna")
     .select("*")
@@ -26,9 +26,9 @@ export async function retrieveMemory(query: string) {
     .order("criado_em", { ascending: false });
 
   if (error) {
-    console.error("RETRIEVE MEMORY ERROR:", error);
+    logger.error({ err: error }, "RETRIEVE MEMORY ERROR");
     return [];
   }
 
-  return data || [];
+  return (data || []) as LunaMemoryRecord[];
 }
