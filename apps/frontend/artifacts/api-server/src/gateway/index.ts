@@ -1,13 +1,51 @@
 import { Router, type IRouter } from "express";
 import { GithubRestAdapter } from "./adapters/github-adapter";
+import { FilesystemRestAdapter } from "./adapters/filesystem-adapter";
 import { GithubReadFileCapability } from "./capabilities/github/read-file";
+import { GithubWriteFileCapability } from "./capabilities/github/write-file";
+import { GithubCreateBranchCapability } from "./capabilities/github/create-branch";
+import { GithubCommitCapability } from "./capabilities/github/commit";
+import { GithubCreatePullRequestCapability } from "./capabilities/github/create-pull-request";
+import { GithubListBranchesCapability } from "./capabilities/github/list-branches";
+import { GithubListPullRequestsCapability } from "./capabilities/github/list-pull-requests";
+import { GithubListCommitsCapability } from "./capabilities/github/list-commits";
+import { GithubCompareCommitsCapability } from "./capabilities/github/compare-commits";
+import { GithubCreateIssueCapability } from "./capabilities/github/create-issue";
+import { GithubCommentPullRequestCapability } from "./capabilities/github/comment-pull-request";
+import { FilesystemReadCapability } from "./capabilities/filesystem/read";
+import { FilesystemWriteCapability } from "./capabilities/filesystem/write";
+import { FilesystemListCapability } from "./capabilities/filesystem/list";
+import { FilesystemSearchCapability } from "./capabilities/filesystem/search";
+import { FilesystemDiffCapability } from "./capabilities/filesystem/diff";
+import { FilesystemExistsCapability } from "./capabilities/filesystem/exists";
 import type { CapabilityRequest } from "./contracts";
 import { CapabilityRegistry } from "./registry/capability-registry";
 import { GatewayError } from "./errors/gateway-error";
 
 export function createGatewayRegistry(): CapabilityRegistry {
   const registry = new CapabilityRegistry();
-  registry.register(new GithubReadFileCapability(new GithubRestAdapter()));
+  const github = new GithubRestAdapter();
+  const filesystem = new FilesystemRestAdapter();
+
+  registry.register(new GithubReadFileCapability(github));
+  registry.register(new GithubWriteFileCapability(github));
+  registry.register(new GithubCreateBranchCapability(github));
+  registry.register(new GithubCommitCapability(github));
+  registry.register(new GithubCreatePullRequestCapability(github));
+  registry.register(new GithubListBranchesCapability(github));
+  registry.register(new GithubListPullRequestsCapability(github));
+  registry.register(new GithubListCommitsCapability(github));
+  registry.register(new GithubCompareCommitsCapability(github));
+  registry.register(new GithubCreateIssueCapability(github));
+  registry.register(new GithubCommentPullRequestCapability(github));
+
+  registry.register(new FilesystemReadCapability(filesystem));
+  registry.register(new FilesystemWriteCapability(filesystem));
+  registry.register(new FilesystemListCapability(filesystem));
+  registry.register(new FilesystemSearchCapability(filesystem));
+  registry.register(new FilesystemDiffCapability(filesystem));
+  registry.register(new FilesystemExistsCapability(filesystem));
+
   return registry;
 }
 
@@ -41,5 +79,22 @@ export function createGatewayRouter(registry = createGatewayRegistry()): IRouter
 
 export { CapabilityRegistry } from "./registry/capability-registry";
 export { GithubRestAdapter } from "./adapters/github-adapter";
+export { FilesystemRestAdapter } from "./adapters/filesystem-adapter";
 export { GithubReadFileCapability } from "./capabilities/github/read-file";
+export { GithubWriteFileCapability } from "./capabilities/github/write-file";
+export { GithubCreateBranchCapability } from "./capabilities/github/create-branch";
+export { GithubCommitCapability } from "./capabilities/github/commit";
+export { GithubCreatePullRequestCapability } from "./capabilities/github/create-pull-request";
+export { GithubListBranchesCapability } from "./capabilities/github/list-branches";
+export { GithubListPullRequestsCapability } from "./capabilities/github/list-pull-requests";
+export { GithubListCommitsCapability } from "./capabilities/github/list-commits";
+export { GithubCompareCommitsCapability } from "./capabilities/github/compare-commits";
+export { GithubCreateIssueCapability } from "./capabilities/github/create-issue";
+export { GithubCommentPullRequestCapability } from "./capabilities/github/comment-pull-request";
+export { FilesystemReadCapability } from "./capabilities/filesystem/read";
+export { FilesystemWriteCapability } from "./capabilities/filesystem/write";
+export { FilesystemListCapability } from "./capabilities/filesystem/list";
+export { FilesystemSearchCapability } from "./capabilities/filesystem/search";
+export { FilesystemDiffCapability } from "./capabilities/filesystem/diff";
+export { FilesystemExistsCapability } from "./capabilities/filesystem/exists";
 export type * from "./contracts";
