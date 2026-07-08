@@ -6,10 +6,15 @@ dotenv.config({
   path: path.resolve(process.cwd(), "../../../../.env"),
 });
 
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_KEY!;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
 
-export const supabase = createClient(
-  supabaseUrl,
-  supabaseKey
-);
+if (!supabaseUrl) {
+  throw new Error("SUPABASE_URL environment variable is required");
+}
+
+if (!supabaseKey) {
+  throw new Error("SUPABASE_KEY environment variable is required");
+}
+
+export const supabase = createClient(supabaseUrl, supabaseKey);

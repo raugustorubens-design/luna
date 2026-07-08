@@ -1,34 +1,35 @@
-// src/luna/pipeline.ts
-
+import { emitAudit } from "./audit";
 import { retrieveMemory, storeMemory } from "./memory";
 import { buildContext } from "./context";
 import { ProviderRouter } from "./provider";
 
 export async function runLunaPipeline(message: string) {
-  console.log("[LUNA] PIPELINE START");
+  emitAudit({ name: "luna.pipeline.started" });
 
-  // 1. Recupera memória
-  console.log("[LUNA] MEMORY RETRIEVAL");
+  emitAudit({ name: "luna.memory.retrieval.started" });
   const memories = await retrieveMemory(message);
+  emitAudit({
+    name: "luna.memory.retrieval.completed",
+    evidence: { memoriesUsed: memories.length },
+  });
 
-  // 2. Monta contexto
-  console.log("[LUNA] CONTEXT BUILD");
+  emitAudit({ name: "luna.context.build.started" });
   const context = buildContext(memories, message);
+  emitAudit({ name: "luna.context.build.completed" });
 
-  // 3. Execução real via provider
-  console.log("[LUNA] PROVIDER EXECUTION");
+  emitAudit({ name: "luna.provider.execution.started" });
   const providerRouter = new ProviderRouter();
   const aiReply = await providerRouter.execute({
     message,
     context,
   });
+  emitAudit({ name: "luna.provider.execution.completed" });
 
   const response = {
     reply: aiReply,
   };
 
-  // 4. Salva memória
-  console.log("[LUNA] MEMORY PERSISTENCE");
+  emitAudit({ name: "luna.memory.persistence.started" });
   await storeMemory({
     tipo: "interaction",
     contexto: "jarvis_mode",
@@ -40,6 +41,7 @@ export async function runLunaPipeline(message: string) {
       memories_used: memories.length,
     },
   });
+  emitAudit({ name: "luna.memory.persistence.completed" });
 
   return response;
 }
