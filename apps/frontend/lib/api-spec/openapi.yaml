@@ -13,6 +13,8 @@ tags:
     description: Chat and AI conversation operations
   - name: conversations
     description: Conversation management
+  - name: gateway
+    description: Gateway capability operations
 paths:
   /healthz:
     get:
@@ -127,6 +129,48 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ChatMessage"
+  /gateway/capabilities:
+    get:
+      operationId: getGatewayCapabilities
+      tags: [gateway]
+      summary: Discover registered gateway capabilities
+      responses:
+        "200":
+          description: Registered capabilities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  capabilities:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CapabilityManifest"
+                required: [capabilities]
+  /gateway/execute:
+    post:
+      operationId: executeGatewayCapability
+      tags: [gateway]
+      summary: Execute a gateway capability through the registry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CapabilityRequest"
+      responses:
+        "200":
+          description: Capability execution result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapabilityResult"
+        "400":
+          description: Capability execution failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapabilityResult"
   /stats:
     get:
       operationId: getStats
@@ -223,3 +267,95 @@ components:
         - totalConversations
         - totalMessages
         - activeToday
+
+    CapabilityHealth:
+      type: string
+      enum: [healthy, degraded, disabled]
+    CapabilityManifest:
+      type: object
+      properties:
+        id:
+          type: string
+        version:
+          type: integer
+        owner:
+          type: string
+        status:
+          $ref: "#/components/schemas/CapabilityHealth"
+        requiresApproval:
+          type: boolean
+        supportsDryRun:
+          type: boolean
+        supportsRollback:
+          type: boolean
+        description:
+          type: string
+      required: [id, version, owner, status, requiresApproval, supportsDryRun, supportsRollback, description]
+    CapabilityRequest:
+      type: object
+      properties:
+        capability:
+          type: string
+        version:
+          type: integer
+        dryRun:
+          type: boolean
+        input:
+          type: object
+          additionalProperties: true
+        context:
+          type: object
+          additionalProperties: true
+      required: [capability, input]
+    CapabilityEvidence:
+      type: object
+      properties:
+        source:
+          type: string
+        reference:
+          type: string
+        observedAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+      required: [source, reference, observedAt]
+    CapabilityError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details: {}
+      required: [code, message]
+    CapabilityResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        capability:
+          type: string
+        version:
+          type: integer
+        duration:
+          type: integer
+        status:
+          $ref: "#/components/schemas/CapabilityHealth"
+        dryRun:
+          type: boolean
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapabilityEvidence"
+        output:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: 'null'
+        error:
+          oneOf:
+            - $ref: "#/components/schemas/CapabilityError"
+            - type: 'null'
+      required: [success, capability, version, duration, status, dryRun, evidence, output, error]

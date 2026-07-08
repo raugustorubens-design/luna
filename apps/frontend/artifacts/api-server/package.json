@@ -8,7 +8,11 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+ codex/implementar-infraestrutura-do-luna-gateway
+    "test": "pnpm --dir ../.. exec tsx --test artifacts/api-server/src/**/*.test.ts"
+
     "test:architecture": "node ./scripts/architecture-check.mjs"
+ main
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.3",
