@@ -73,3 +73,36 @@ Each capability has a dedicated manifest with id, version, owner, health, approv
 ## Discovery
 
 `GET /api/gateway/capabilities` returns the registry discovery list. Adding future capabilities requires registration, not manual response edits.
+
+## Capability packs
+
+The gateway currently expands three technology surfaces, each behind its own dedicated adapter. No capability calls an external SDK, API, or the filesystem directly — every call passes through the pack's adapter.
+
+- **Supabase** (`supabase.query`, `supabase.insert`, `supabase.update`, `supabase.delete`, `supabase.rpc`, `supabase.upload_file`, `supabase.download_file`) — `SupabaseRestAdapter` (`src/gateway/adapters/supabase-adapter.ts`) is the only module that imports `@supabase/supabase-js`.
+- **Railway** (`railway.deploy`, `railway.list_services`, `railway.status`, `railway.logs`, `railway.variables`, `railway.restart_service`) — `RailwayGraphqlAdapter` (`src/gateway/adapters/railway-adapter.ts`) is the only module that talks to the Railway public GraphQL API.
+- **Reporter** (`reporter.audit_repository`, `reporter.snapshot`, `reporter.runtime_state`, `reporter.repository_map`, `reporter.capability_inventory`, `reporter.architecture_report`) — `ReporterFsAdapter` (`src/gateway/adapters/reporter-adapter.ts`) is the only module that reads the filesystem, git, and the registry's discovery list. Reporter capabilities are exclusively observational: none of them mutate state, and none require approval.
+
+Every capability delegates its dry-run/approval/timing/error-shaping lifecycle to the shared `runCapabilityLifecycle` helper (`src/gateway/capabilities/lifecycle.ts`), so the behavior described below is identical across all packs.
+
+## Approval
+
+Manifests with `requiresApproval: true` (all destructive Supabase and Railway capabilities: insert, update, delete, rpc, upload_file, deploy, restart_service) only execute when the caller sends `approval: true` in `context.metadata`. Without it, the capability short-circuits with an `APPROVAL_REQUIRED` error and the adapter is never invoked. Dry-run requests always short-circuit before the approval check, so a dry-run never requires approval.
+
+## Audit
+
+Every capability execution is recorded through `GatewayAuditor`: a `capability.requested` event captures the start and caller (`context.actor`), a `capability.dryrun` event is added when `dryRun` is set, and a `capability.executed`/`capability.failed` event captures the end, duration, evidence, and error alongside the same caller context.
+
+## Context Sync
+
+`reporter.snapshot` is the seam between the gateway and the organism's longitudinal memory. It calls `RepositoryContextSync` (`src/gateway/context/context-sync.ts`), which implements the pre-existing `ContextSyncPort`/`ContextSyncCheckpoint` contracts, to persist a checkpoint referencing:
+
+- Cognitive Index — `luna_core`
+- Checkpoints — `luna_checkpoint.json`, `docs/checkpoints/LUNA_LONGITUDINAL_MEMORY.md`
+- Runtime Memory — `.luna/runtime/runtime_state.json`
+- Architectural Memory — `luna_context/ARCHITECTURE.md`, `docs/architecture/luna-gateway.md`
+
+Checkpoints are appended to `.luna/runtime/context_sync_checkpoints.json`, alongside the organism's existing runtime observability files. No new memory model or sync architecture was introduced; only the existing contract was implemented.
+
+## OpenAPI
+
+`GET /gateway/capabilities` and `POST /gateway/execute` are generic over `CapabilityManifest`, `CapabilityRequest`, and `CapabilityResult`. Because every new capability reuses those same shapes, the OpenAPI spec, `api-zod`, and `api-client-react` already cover the Supabase, Railway, and Reporter packs without any schema changes.

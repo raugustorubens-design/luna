@@ -57,7 +57,57 @@ export type {
   FilesystemExistsInput,
   FilesystemExistsOutput,
 } from "./filesystem";
-export type { RailwayAdapter, RailwayGetDeploymentStatusInput, RailwayGetDeploymentStatusOutput } from "./railway";
+export type {
+  RailwayAdapter,
+  RailwayDeployInput,
+  RailwayDeployOutput,
+  RailwayListServicesInput,
+  RailwayListServicesOutput,
+  RailwayServiceSummary,
+  RailwayStatusInput,
+  RailwayStatusOutput,
+  RailwayLogsInput,
+  RailwayLogsOutput,
+  RailwayLogEntry,
+  RailwayVariablesInput,
+  RailwayVariablesOutput,
+  RailwayRestartServiceInput,
+  RailwayRestartServiceOutput,
+} from "./adapters";
+export type {
+  SupabaseAdapter,
+  SupabaseQueryInput,
+  SupabaseQueryOutput,
+  SupabaseInsertInput,
+  SupabaseInsertOutput,
+  SupabaseUpdateInput,
+  SupabaseUpdateOutput,
+  SupabaseDeleteInput,
+  SupabaseDeleteOutput,
+  SupabaseRpcInput,
+  SupabaseRpcOutput,
+  SupabaseUploadFileInput,
+  SupabaseUploadFileOutput,
+  SupabaseDownloadFileInput,
+  SupabaseDownloadFileOutput,
+} from "./adapters";
+export type {
+  ReporterAdapter,
+  ReporterAuditRepositoryInput,
+  ReporterAuditRepositoryOutput,
+  RepositoryApplicationEntry,
+  ReporterSnapshotInput,
+  ReporterSnapshotOutput,
+  ReporterRuntimeStateInput,
+  ReporterRuntimeStateOutput,
+  ReporterRepositoryMapInput,
+  ReporterRepositoryMapOutput,
+  ReporterCapabilityInventoryInput,
+  ReporterCapabilityInventoryOutput,
+  ReporterArchitectureReportInput,
+  ReporterArchitectureReportOutput,
+  ReporterArchitectureLayer,
+} from "./adapters";
 export type { N8nAdapter, N8nTriggerWorkflowInput, N8nTriggerWorkflowOutput } from "./n8n";
 export type { Capability, CapabilityError, CapabilityEvidence, CapabilityRequest, CapabilityResult, RollbackableCapability } from "./capability";
 export { isRollbackableCapability } from "./capability";

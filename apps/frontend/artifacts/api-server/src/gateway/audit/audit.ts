@@ -37,7 +37,20 @@ export class GatewayAuditor {
   }
 
   async completed(result: CapabilityResult, context?: GatewayExecutionContext): Promise<void> {
-    await this.record({ type: result.success ? "capability.executed" : "capability.failed", capability: result.capability, version: result.version, context, metadata: { duration: result.duration, status: result.status } });
+    await this.record({
+      type: result.success ? "capability.executed" : "capability.failed",
+      capability: result.capability,
+      version: result.version,
+      context,
+      metadata: {
+        duration: result.duration,
+        status: result.status,
+        dryRun: result.dryRun,
+        success: result.success,
+        evidence: result.evidence,
+        error: result.error,
+      },
+    });
   }
 
   async contextSynced(context?: GatewayExecutionContext, metadata?: Record<string, unknown>): Promise<void> {
