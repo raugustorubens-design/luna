@@ -119,3 +119,31 @@ Todas as transformações do MVP (normalização de coluna, extração de concei
 - `hipocampo.ts` agora é genuinamente polimórfico (aceita candidatos de qualquer organ, não só do Cognitive Engine) — qualquer organ futuro que precise persistir conhecimento deve reutilizá-lo pelo mesmo caminho, não criar um atalho novo.
 - `architecture-check.mjs` passou de checagem por arquivo nomeado para checagem por diretório completo (`listFilesRecursive`) — o padrão está pronto para ser reaproveitado por qualquer organ futuro sem precisar listar arquivos manualmente.
 - O padrão de dependências injetáveis com default de produção (estabelecido no Prompt 2) provou-se necessário de novo no Prompt 3 — deve ser tratado como convenção obrigatória para qualquer novo módulo que toque rede/banco, não uma escolha caso a caso.
+
+---
+
+## 10. Virada estratégica — órgãos como MVPs independentes (ADR-004)
+
+**A consolidação física dos Prompts 2 e 3 foi parcialmente revertida em nível de estratégia (não de código).** Ver `docs/architecture/adr-004-organs-as-independent-mvps.md` para o registro completo. Resumo:
+
+### O que motivou a virada
+Descoberta de 5 repositórios adicionais não mapeados nas etapas anteriores: `raugustorubens-design/Luna-context.md` (contexto compartilhado do organismo, atualizado no mesmo dia desta etapa com a mesma conclusão antes de eu chegar a ela), `raugustorubens-design/luna-reporter` (Reporter real, com missão e arquitetura próprias), `raugustorubens-design/luna-core` e `raugustorubens-design/luna-api` (fontes/duplicatas de `apps/core`/`apps/api`), `raugustorubens-design/luna-frontend` (protótipo visual). O princípio "um órgão, um repositório" já estava documentado na constituição do `luna-reporter` antes desta consolidação começar.
+
+### Reclassificação de órgãos
+- **Reporter**: o órgão oficial é `luna-reporter` (repositório próprio, independente). `src/luna/reporter.ts` neste monorepo **não é o Reporter oficial** — é um log de auditoria interno ao pipeline cognitivo, e deve ser tratado/documentado como tal daqui em diante.
+- **Convergia**: reclassificado como candidato prioritário a produto/repositório independente. Permanece fisicamente no monorepo nesta etapa por falta de um contrato de API formal entre Convergia-serviço e Hipocampo/Memory Engine (hoje é chamada de função TS direta).
+- **Cognitive Engine, Hipocampo, Memory Engine, Provider Engine, Provider Router, Budget Manager, Filtro Cognitivo, Índice Cognitivo, Context Hub**: permanecem no monorepo — são fortemente acoplados entre si por chamada de função, sem contrato de API, e extraí-los agora quebraria a verificação automática de fronteira sem substituí-la por nada equivalente.
+- **Planner**: continua bloqueado, sem responsabilidade definida em nenhum documento (nem no monorepo, nem no `Luna-context.md` externo).
+- **LUNA Forge**: nome oficial do "Modo Dev" (IDE cognitiva tipo Cursor), citado no `Luna-context.md` externo. Não existe ainda como código ou repositório. Decisão: nasce direto como repositório próprio quando for criado.
+
+### Não executado nesta etapa (risco/decisão de produto, não técnica)
+- Nenhum código foi movido para fora do monorepo.
+- Nenhum repositório novo foi criado.
+- `apps/core`/`apps/api` (cópias prováveis de `luna-core`/`luna-api`) não foram removidos — decidir qual é a fonte de deploy real é uma pergunta de produto.
+- `src/luna/reporter.ts` não foi renomeado — a mudança de nome exige atualizar `architecture-check.mjs`, testes e imports; melhor feita isolada, não misturada com esta virada estratégica.
+
+### Ação prioritária registrada, não executada
+Extrair as interfaces principais hoje espalhadas em `contracts.ts` por organ (`LunaContext`, `ProviderAdapter`, `ConsolidationCandidate`/`ConsolidationDecision`, `CanonicalDocument`) para um pacote de contratos formal e publicável — é o que tornaria qualquer extração futura de organ (a começar por Convergia) segura, sem quebrar a verificação de fronteira.
+
+### Relação entre os dois LUNA_CONTEXT.md
+`raugustorubens-design/Luna-context.md` é a fonte de continuidade em nível de organismo (multi-repositório). Este arquivo (`luna_context/LUNA_CONTEXT.md`, dentro do monorepo `luna`) é o registro detalhado do que acontece dentro do núcleo cognitivo. Os dois devem permanecer consistentes; divergência entre eles é, por definição, um conflito arquitetural a ser registrado, não ignorado.
