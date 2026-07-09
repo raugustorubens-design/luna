@@ -1,4 +1,4 @@
-import { runLunaPipeline } from "../luna/pipeline";
+import { runCognitiveEngine } from "../luna/cognitive-engine";
 import { Router, type IRouter } from "express";
 import { eq, sql, count } from "drizzle-orm";
 import { db, conversationsTable, messagesTable } from "@workspace/db";
@@ -112,7 +112,7 @@ router.post("/chat", async (req, res): Promise<void> => {
   }
 
   // ================= LUNA CORE =================
-  const lunaResponse = await runLunaPipeline(content);
+  const lunaResponse = await runCognitiveEngine(content);
 
   const aiReply = lunaResponse.reply;
 

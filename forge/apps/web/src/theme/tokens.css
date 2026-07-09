@@ -1,0 +1,20 @@
+/*
+ * Identidade visual da LUNA — isolada de propósito.
+ * Reaproveita a paleta ciano/violeta já usada no protótipo `luna-frontend`
+ * (bg escuro + acentos ciano #22D3EE / violeta #A78BFA) como ponto de
+ * partida, não como decisão final. Qualquer refinamento futuro da
+ * identidade do Forge deve mudar só este arquivo.
+ */
+:root {
+  --luna-cyan: 190 82% 60%;
+  --luna-violet: 258 70% 68%;
+  --luna-glow: 0 0 24px hsl(var(--luna-cyan) / 0.25);
+}
+
+.forge-brand-glow {
+  box-shadow: var(--luna-glow);
+}
+
+.forge-accent-text {
+  color: hsl(var(--luna-cyan));
+}

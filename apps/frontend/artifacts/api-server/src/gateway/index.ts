@@ -18,6 +18,10 @@ import { FilesystemListCapability } from "./capabilities/filesystem/list";
 import { FilesystemSearchCapability } from "./capabilities/filesystem/search";
 import { FilesystemDiffCapability } from "./capabilities/filesystem/diff";
 import { FilesystemExistsCapability } from "./capabilities/filesystem/exists";
+import { RailwayGetDeploymentStatusCapability } from "./capabilities/railway/get-deployment-status";
+import { N8nTriggerWorkflowCapability } from "./capabilities/n8n/trigger-workflow";
+import { RailwayRestAdapter } from "./adapters/railway-adapter";
+import { N8nRestAdapter } from "./adapters/n8n-adapter";
 import type { CapabilityRequest } from "./contracts";
 import { CapabilityRegistry } from "./registry/capability-registry";
 import { GatewayError } from "./errors/gateway-error";
@@ -26,6 +30,8 @@ export function createGatewayRegistry(): CapabilityRegistry {
   const registry = new CapabilityRegistry();
   const github = new GithubRestAdapter();
   const filesystem = new FilesystemRestAdapter();
+  const railway = new RailwayRestAdapter();
+  const n8n = new N8nRestAdapter();
 
   registry.register(new GithubReadFileCapability(github));
   registry.register(new GithubWriteFileCapability(github));
@@ -45,6 +51,14 @@ export function createGatewayRegistry(): CapabilityRegistry {
   registry.register(new FilesystemSearchCapability(filesystem));
   registry.register(new FilesystemDiffCapability(filesystem));
   registry.register(new FilesystemExistsCapability(filesystem));
+
+  // Prepared, not live: both registered with manifest status "disabled", so
+  // the registry's tested disabled-capability short-circuit guarantees they
+  // are discoverable but never actually executed until real credentials and
+  // an implementation exist (Prompt 2: "preparar integração... sem alterar
+  // funcionalidades existentes").
+  registry.register(new RailwayGetDeploymentStatusCapability(railway));
+  registry.register(new N8nTriggerWorkflowCapability(n8n));
 
   return registry;
 }
@@ -97,4 +111,8 @@ export { FilesystemListCapability } from "./capabilities/filesystem/list";
 export { FilesystemSearchCapability } from "./capabilities/filesystem/search";
 export { FilesystemDiffCapability } from "./capabilities/filesystem/diff";
 export { FilesystemExistsCapability } from "./capabilities/filesystem/exists";
+export { RailwayRestAdapter } from "./adapters/railway-adapter";
+export { N8nRestAdapter } from "./adapters/n8n-adapter";
+export { RailwayGetDeploymentStatusCapability } from "./capabilities/railway/get-deployment-status";
+export { N8nTriggerWorkflowCapability } from "./capabilities/n8n/trigger-workflow";
 export type * from "./contracts";
