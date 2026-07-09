@@ -10,9 +10,20 @@ export interface LunaMemoryRecord {
   criado_em?: string;
 }
 
+export interface LunaIdentity {
+  name: string;
+  mission: string;
+}
+
 export interface LunaContext {
   memories: LunaMemoryRecord[];
   current_message: string;
+  identity: LunaIdentity;
+  projectState: string;
+  evolutiveContext: string[];
+  openTasks: string[];
+  roadmap: string[];
+  cognitiveAttractors: string[];
   sync: {
     cognitiveIndexRefs: string[];
     checkpointRefs: string[];
@@ -27,7 +38,13 @@ export interface ProviderExecutionInput {
 
 export interface ProviderAdapter {
   readonly id: string;
+  isConfigured(): boolean;
   execute(input: ProviderExecutionInput): Promise<string>;
+}
+
+export interface ProviderProfile {
+  id: string;
+  configured: boolean;
 }
 
 export interface AuditEvent {
