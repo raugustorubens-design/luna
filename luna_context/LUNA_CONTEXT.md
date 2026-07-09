@@ -157,3 +157,40 @@ A arquitetura completa do ecossistema (mapa de sistemas, classificação, matriz
 **Nenhum código foi alterado nesta etapa.** Um achado real emergiu da auditoria (registrado, não corrigido): `src/convergia/training/training-to-memory.ts` chama `checkpoint()` do Memory Engine diretamente, contornando o Hipocampo — violação sutil de "Convergia nunca persiste diretamente" que o `architecture-check.mjs` atual não detecta. Prioridade registrada no roadmap oficial.
 
 Este é o último prompt macro de arquitetura, por decisão explícita desta etapa. Toda evolução futura deste monorepo deve corresponder a um item do roadmap oficial (`ECOSYSTEM_ARCHITECTURE.md` §7), nunca a uma nova consolidação ampla.
+
+---
+
+## 12. LUNA Forge — MVP-01 (Ambiente Oficial de Engenharia)
+
+Primeiro MVP construído sob o novo padrão pós-ADR-005: responsabilidade única, sem consolidação ampla. Código em `forge/` (workspace pnpm próprio, independente do monorepo).
+
+### Funcionalidades implementadas
+Explorer (árvore de diretórios via `filesystem.list`, expansão preguiçosa), Editor (Monaco real — não CodeMirror simulado —, abas com múltiplos arquivos, indicador de sujo, salvar via Cmd/Ctrl+S usando `filesystem.write`), Chat (janela única, fala apenas com `/api/chat`, nunca com um provider diretamente), Painel GitHub (branches/commits/PRs reais via capacidades `github.*` do Gateway, diff de commit via `github.compare_commits`; merge/review desabilitados na UI com explicação — capacidades ainda não existem), Terminal (WebSocket para um processo bash local via `child_process.spawn`, execução simples, sem automação), Painel de Contexto (lê `luna_context/LUNA_CONTEXT.md` real, combina com branch/último commit locais via `git`).
+
+### Componentes reutilizados
+5 componentes shadcn/radix do `apps/frontend/artifacts/frontend/src/components/ui/` (`tabs`, `resizable`, `scroll-area`, `separator` copiados sem alteração; `button` adaptado para remover classes de um plugin Tailwind exclusivo do Replit) e `lib/utils.ts` (`cn()`), confirmando que a base visual da LUNA já orfã no monorepo era reaproveitável.
+
+### Componentes criados
+`api-client.ts` (única porta de saída do Forge para o organismo LUNA — Gateway `/gateway/execute` e `/gateway/capabilities`, Chat `/api/chat`), servidor local próprio (`apps/server`) só para Terminal (WebSocket) e leitura de git local (`git rev-parse`/`git log`, sem tocar GitHub remoto), `constitution-check.mjs` (constituição executável do Forge).
+
+### Decisões arquiteturais
+- **Exceção temporária de posicionamento**: o Gateway de criação de repositório (`create_repository`) retornou `403 Resource not accessible by integration` — a integração GitHub desta sessão não tem permissão para criar repositórios novos. Diante disso, o usuário decidiu explicitamente construir o Forge dentro do monorepo `luna` por ora, como dívida técnica registrada, em vez de esperar por uma ação manual externa. `forge/` mantém `package.json`/`pnpm-workspace.yaml` totalmente independentes do monorepo para que a extração futura para `luna-forge` seja um `git subtree`/copy direto, não uma reescrita.
+- **Duas exceções deliberadas à regra "só contratos públicos"**: (1) o Terminal executa comandos localmente via processo próprio do Forge, não via Gateway — não existe (nem deveria existir) uma capacidade `terminal.exec` no Gateway, pois isso não é uma capacidade do organismo LUNA, é uma ferramenta do ambiente de desenvolvimento local; (2) a leitura de branch/commit local usa `git` diretamente no disco do Forge, não `github.list_branches` (que é remoto/API) — são domínios diferentes (estado local não commitado vs. estado remoto no GitHub). Nenhuma das duas toca Supabase, memória ou provider.
+- **Lacuna encontrada, não implementada**: não existe endpoint HTTP para o Context Hub (`assembleContext` é uma função interna do backend, não uma rota). O Painel de Contexto do Forge hoje lê `LUNA_CONTEXT.md` como arquivo via `filesystem.read`, não via Context Hub — registrado como bloqueio para a versão definitiva do MVP-02.
+- **Monaco Editor empacotado localmente** (`monaco-editor` como dependência direta + workers via Vite `?worker`), não pelo CDN padrão do `@monaco-editor/react` — um ambiente de desenvolvimento local não deveria depender de um CDN externo para o editor funcionar.
+
+### Riscos identificados
+- Terminal usa `child_process.spawn` (não node-pty) — programas interativos em tela cheia (vim, htop) não renderizam corretamente. Tradeoff deliberado para evitar risco de compilação nativa; documentado em `forge/ARCHITECTURE.md`.
+- `github.merge_pull_request` e capacidades de review de PR não existem no Gateway — bloqueia a versão definitiva do MVP-03 (Git Inteligente), já registrado em `forge/ROADMAP.md`.
+- Achado de segurança não relacionado ao Forge, mas descoberto durante a auditoria visual do Explorer: `README.md` da raiz do monorepo continha uma `DATABASE_URL` do Supabase em texto plano, commitada desde `7d52e181`. Removida do arquivo nesta mesma etapa (commit separado) a pedido do usuário; a senha em si segue exposta no histórico do git e precisa ser rotacionada no painel do Supabase — ação fora do alcance desta sessão.
+
+### Novos MVPs registrados (roadmap, não implementados)
+MVP-02 Context Hub (definitivo, via endpoint HTTP), MVP-03 Git Inteligente (merge/review), MVP-04 Provider Router (visibilidade), MVP-05 Python Workspace, MVP-06 Observabilidade, MVP-07 Diagnóstico Arquitetural, MVP-08 Engenharia Cognitiva, MVP-09 Pair Programming, MVP-10 Multiagentes. Detalhes em `forge/ROADMAP.md`.
+
+### Verificação real
+`pnpm run typecheck` limpo em `apps/web` e `apps/server`; 2/2 testes reais em `apps/server` (`git.test.ts`, usando repositórios git reais criados em `mkdtemp`, não mocks); `constitution-check.mjs` aprovado (23 arquivos escaneados: nenhum token de banco, nenhuma chamada direta a provider, nenhum import interno de órgão); build de produção (`vite build`) concluído com sucesso. Smoke test end-to-end via Playwright real (não simulado): Explorer expandido e navegado, arquivo real aberto e editado no Monaco, Painel de Contexto confirmado exibindo `MVP atual`/branch reais, mensagem real enviada ao Chat e resposta recebida, comando real executado no Terminal (`echo forge-terminal-ok` ecoado corretamente), Painel GitHub exibindo erro real do Gateway (`GitHub request failed with status 401` — sem token configurado neste sandbox) em vez de erro engolido.
+
+### Inferências consolidadas
+- A base de componentes shadcn do monorepo (`apps/frontend/artifacts/frontend`), embora órfã do runtime soberano, provou ser diretamente reaproveitável por um sistema externo — reforça que ela deveria virar um pacote de design system publicável, não permanecer presa dentro de um app específico.
+- O padrão "CapabilityResult com `success:false` é uma resposta HTTP normal (400), não uma falha de transporte" precisa ser tratado explicitamente por qualquer client novo do Gateway — um parser de erro genérico (`{error: string}`) quebra silenciosamente para esse formato, como ocorreu aqui (`"[object Object]"`) até ser corrigido.
+- A ausência de um endpoint HTTP para o Context Hub é o primeiro caso concreto, fora do núcleo cognitivo, de um consumidor externo precisando de um contrato que só existe como função interna — evidência real (não hipotética) a favor de priorizar o MVP-02.

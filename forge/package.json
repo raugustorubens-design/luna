@@ -1,0 +1,14 @@
+{
+  "name": "luna-forge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LUNA Forge — the official engineering environment for the LUNA ecosystem.",
+  "scripts": {
+    "dev:web": "pnpm --filter @forge/web dev",
+    "dev:server": "pnpm --filter @forge/server dev",
+    "build": "pnpm --filter @forge/web build && pnpm --filter @forge/server build",
+    "test": "pnpm --filter @forge/server test",
+    "test:constitution": "node ./scripts/constitution-check.mjs",
+    "typecheck": "pnpm --filter @forge/web typecheck && pnpm --filter @forge/server typecheck"
+  }
+}
