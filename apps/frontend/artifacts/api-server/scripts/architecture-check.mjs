@@ -40,6 +40,30 @@ assert.match(contextHubSource, /cognitiveIndexRefs/, "Context Hub must expose th
 assert.match(contextHubSource, /checkpointRefs/, "Context Hub must expose the checkpoint sync seam");
 assert.match(contextHubSource, /reconstructionRefs/, "Context Hub must expose the reconstruction sync seam");
 
+// ---- Context Hub (Forge MVP-02): reconstructs, never persists, never decides, never touches Supabase ----
+assert.doesNotMatch(
+  contextHubSource,
+  /supabase|drizzle/i,
+  "Context Hub must never access the database directly — reads go through Memory Engine's read functions",
+);
+assert.doesNotMatch(
+  contextHubSource,
+  /\bpersistMemory\s*\(|\bcheckpoint\s*\(\s*[{\w]|decideAndConsolidate/,
+  "Context Hub must never persist or decide — it only reconstructs and reads (listCheckpoints, readProjectContext)",
+);
+
+// ---- Gateway must not expose Context Hub as a capability ----
+// (Reason: the "Gateway remains cognition-free" rule below already forbids
+// `../luna/` imports in gateway/index.ts — this assertion just names the
+// specific consequence for Context Hub explicitly, so a future edit that
+// tries to register a `context.*` capability fails loudly with a clear
+// message instead of the generic cognition-free one.)
+assert.doesNotMatch(
+  read("src/gateway/index.ts"),
+  /context-hub|buildOrganismContext/,
+  "Context Hub must be exposed as a sibling route (see routes/context.ts), never as a Gateway capability",
+);
+
 // ---- Cognitive Engine: never persists, never calls a provider or DB directly ----
 const cognitiveEngineSource = read("src/luna/cognitive-engine.ts");
 assert.doesNotMatch(
@@ -72,6 +96,14 @@ assert.match(
 );
 
 // ---- Memory Engine: the only module allowed to own persistence ----
+// Forge MVP-02 registered a future architecture where a "Guardian" (Storage
+// Manager) sits between Memory Engine and Supabase, so Memory Engine itself
+// would stop importing `lib/supabase` directly. Guardian does not exist yet
+// (confirmed by repo-wide search) and building it was explicitly out of
+// scope for "just Context Hub" — so unlike Hipocampo/Context Hub above,
+// there is no `doesNotMatch(.../supabase/)` assertion here. Adding one now
+// would fail against the current, correct, working architecture. See
+// LUNA_CONTEXT.md for the registered decision to defer Guardian.
 const memoryEngineSource = read("src/luna/memory-engine.ts");
 assert.match(memoryEngineSource, /supabase/i, "Memory Engine must own persistence");
 

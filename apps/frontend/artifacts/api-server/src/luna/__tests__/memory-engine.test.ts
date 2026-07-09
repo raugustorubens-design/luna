@@ -6,8 +6,22 @@ function stubClient(overrides?: {
   insertError?: unknown;
   selectData?: unknown[];
   selectError?: unknown;
-}): { client: MemoryStoreClient; inserted: Record<string, unknown>[][] } {
+}): { client: MemoryStoreClient; inserted: Record<string, unknown>[][]; eqCalls: Array<[string, unknown]> } {
   const inserted: Record<string, unknown>[][] = [];
+  const eqCalls: Array<[string, unknown]> = [];
+
+  const terminal = () => ({
+    limit(_count: number) {
+      return {
+        order(_column: string, _options: { ascending: boolean }) {
+          return Promise.resolve({
+            data: overrides?.selectData ?? [],
+            error: overrides?.selectError ?? null,
+          });
+        },
+      };
+    },
+  });
 
   const client: MemoryStoreClient = {
     from(_table: string) {
@@ -18,15 +32,10 @@ function stubClient(overrides?: {
         },
         select(_columns: string) {
           return {
-            limit(_count: number) {
-              return {
-                order(_column: string, _options: { ascending: boolean }) {
-                  return Promise.resolve({
-                    data: overrides?.selectData ?? [],
-                    error: overrides?.selectError ?? null,
-                  });
-                },
-              };
+            ...terminal(),
+            eq(column: string, value: unknown) {
+              eqCalls.push([column, value]);
+              return terminal();
             },
           };
         },
@@ -34,7 +43,7 @@ function stubClient(overrides?: {
     },
   };
 
-  return { client, inserted };
+  return { client, inserted, eqCalls };
 }
 
 test("memory engine persists a memory record through the injected client", async () => {
@@ -80,4 +89,24 @@ test("memory engine checkpoint persists a tipo=checkpoint record", async () => {
 
   assert.equal(inserted.length, 1);
   assert.equal(inserted[0]?.[0]?.tipo, "checkpoint");
+});
+
+test("memory engine listCheckpoints filters by tipo=checkpoint on the same table", async () => {
+  const { client, eqCalls } = stubClient({ selectData: [{ id: 1, tipo: "checkpoint", titulo: "cp" }] });
+  const engine = createMemoryEngine(client);
+
+  const checkpoints = await engine.listCheckpoints(5);
+
+  assert.equal(checkpoints.length, 1);
+  assert.equal(checkpoints[0]?.titulo, "cp");
+  assert.deepEqual(eqCalls, [["tipo", "checkpoint"]]);
+});
+
+test("memory engine listCheckpoints returns an empty array when the query errors", async () => {
+  const { client } = stubClient({ selectError: new Error("Host not in allowlist") });
+  const engine = createMemoryEngine(client);
+
+  const checkpoints = await engine.listCheckpoints();
+
+  assert.deepEqual(checkpoints, []);
 });
