@@ -9,16 +9,21 @@ export interface ConsolidationDecision {
   reason: string;
 }
 
-interface InteractionContent {
-  user_message?: unknown;
-  assistant_response?: unknown;
-}
-
+/**
+ * Deliberately shape-agnostic: Hipocampo receives candidates from more than
+ * one source now (Cognitive Engine's chat interactions, Convergia's
+ * transformation/knowledge results), each with a different `conteudo`
+ * shape. A candidate is meaningful if it carries at least one non-empty
+ * value anywhere in its content — not tied to specific field names.
+ */
 function isMeaningful(candidate: ConsolidationCandidate): boolean {
-  const content = candidate.conteudo as InteractionContent;
-  const userMessage = String(content?.user_message ?? "").trim();
-  const assistantResponse = String(content?.assistant_response ?? "").trim();
-  return userMessage.length > 0 && assistantResponse.length > 0;
+  const content = candidate.conteudo;
+  if (content === null || content === undefined) return false;
+  if (typeof content !== "object") return String(content).trim().length > 0;
+  return Object.values(content as Record<string, unknown>).some((value) => {
+    if (value === null || value === undefined) return false;
+    return String(value).trim().length > 0;
+  });
 }
 
 function isImmediateDuplicate(
@@ -26,12 +31,7 @@ function isImmediateDuplicate(
   lastMemory: LunaMemoryRecord | undefined,
 ): boolean {
   if (!lastMemory) return false;
-  const last = lastMemory.conteudo as InteractionContent | undefined;
-  const current = candidate.conteudo as InteractionContent;
-  return (
-    last?.user_message === current?.user_message &&
-    last?.assistant_response === current?.assistant_response
-  );
+  return JSON.stringify(lastMemory.conteudo ?? null) === JSON.stringify(candidate.conteudo ?? null);
 }
 
 /**

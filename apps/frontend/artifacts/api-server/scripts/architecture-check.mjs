@@ -1,9 +1,28 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const root = new URL("..", import.meta.url).pathname;
 const read = (path) => readFileSync(join(root, path), "utf8");
+
+function listFilesRecursive(relativeDir) {
+  const absoluteDir = join(root, relativeDir);
+  const entries = readdirSync(absoluteDir);
+  const files = [];
+
+  for (const entry of entries) {
+    const entryRelativePath = join(relativeDir, entry);
+    const absoluteEntryPath = join(root, entryRelativePath);
+
+    if (statSync(absoluteEntryPath).isDirectory()) {
+      files.push(...listFilesRecursive(entryRelativePath));
+    } else if (entry.endsWith(".ts") && !entry.endsWith(".test.ts")) {
+      files.push(entryRelativePath);
+    }
+  }
+
+  return files;
+}
 
 // ---- Provider Router: must route through the adapter contract only ----
 const providerRouterSource = read("src/luna/provider-router.ts");
@@ -62,6 +81,48 @@ assert.doesNotMatch(
   gatewayIndexSource,
   /\.\.\/luna\//,
   "Gateway must not depend on the cognitive core (luna/*)",
+);
+
+// ---- Convergia: never persists directly, never calls a provider directly ----
+// (Prompt 3: "O Convergia nunca poderá persistir diretamente" /
+// "O Convergia nunca chamará providers diretamente" — checked across every
+// file in the organ, not just one entry point, since the pipeline is
+// deliberately split across many small modules.)
+const convergiaFiles = listFilesRecursive("src/convergia");
+assert.ok(convergiaFiles.length > 0, "Convergia organ must exist");
+
+for (const relativePath of convergiaFiles) {
+  const source = read(relativePath);
+
+  assert.doesNotMatch(
+    source,
+    /supabase|drizzle/i,
+    `Convergia must never access the database directly (found in ${relativePath})`,
+  );
+  assert.doesNotMatch(
+    source,
+    /GroqAdapter|ChatGptAdapter|ClaudeAdapter|GrokAdapter|ManusAdapter/,
+    `Convergia must never call a provider adapter directly — route through the Provider Engine (found in ${relativePath})`,
+  );
+}
+
+// Only the knowledge gate may reach into Hipocampo; every other Convergia
+// module must go through it rather than calling Hipocampo ad hoc.
+const hipocampoCallers = convergiaFiles.filter(
+  (path) => /decideAndConsolidate/.test(read(path)) && !path.endsWith("knowledge-gate.ts"),
+);
+assert.deepEqual(
+  hipocampoCallers,
+  [],
+  `Only knowledge-gate.ts may call Hipocampo directly — found direct calls in: ${hipocampoCallers.join(", ")}`,
+);
+
+// The knowledge gate itself must delegate to Hipocampo, not persist.
+const knowledgeGateSource = read("src/convergia/knowledge/knowledge-gate.ts");
+assert.match(
+  knowledgeGateSource,
+  /decideAndConsolidate/,
+  "Convergia's knowledge gate must delegate consolidation to Hipocampo",
 );
 
 console.log("Architecture checks passed");
