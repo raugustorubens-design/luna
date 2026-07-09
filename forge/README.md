@@ -1,4 +1,6 @@
-# LUNA Forge
+# LUNA Forge (superseded — ver `raugustorubens-design/luna-frontend`)
+
+> **Este código foi consolidado no repositório `luna-frontend` como o modo "Forge / Dev Mode" (`/forge`), branch `claude/forge-dev-mode`.** A pasta `forge/` continua aqui como histórico/referência do MVP-01 standalone, mas não é mais o ambiente ativo — não desenvolva aqui. Ver `luna_context/LUNA_CONTEXT.md` §13 para o registro completo da consolidação e a decisão de por que o destino final não foi um repositório `luna-forge` próprio (como esta pasta previa), e sim o `luna-frontend`.
 
 > O LUNA Forge é o primeiro produto da plataforma LUNA construído utilizando a própria arquitetura da LUNA. Toda decisão de implementação demonstra, na prática, que a arquitetura é capaz de sustentar o desenvolvimento dos demais sistemas do ecossistema.
 

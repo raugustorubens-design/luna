@@ -37,6 +37,6 @@ Cada item abaixo é um MVP futuro independente — nenhum implementado nesta eta
 
 ## Pendências técnicas registradas nesta etapa (fora dos MVPs de produto)
 
-- Migrar `forge/` de dentro do monorepo `luna` para o repositório próprio `raugustorubens-design/luna-forge`, assim que a permissão de criação de repositório estiver disponível (ver `README.md`).
+- ~~Migrar `forge/` de dentro do monorepo `luna` para o repositório próprio `raugustorubens-design/luna-forge`~~ — **resolvido de forma diferente da prevista**: consolidado em `raugustorubens-design/luna-frontend` (`/forge`, branch `claude/forge-dev-mode`) em vez de um repositório `luna-forge` dedicado. Este roadmap agora vive em `luna-frontend` também; os itens abaixo continuam válidos, só o repositório de destino mudou.
 - Capability `github.merge_pull_request` e capability de review de PR não existem no Gateway — bloqueiam MVP-03.
 - Endpoint HTTP do Context Hub não existe — bloqueia a versão definitiva do painel de Contexto (MVP-02).

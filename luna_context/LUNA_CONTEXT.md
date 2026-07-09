@@ -194,3 +194,42 @@ MVP-02 Context Hub (definitivo, via endpoint HTTP), MVP-03 Git Inteligente (merg
 - A base de componentes shadcn do monorepo (`apps/frontend/artifacts/frontend`), embora órfã do runtime soberano, provou ser diretamente reaproveitável por um sistema externo — reforça que ela deveria virar um pacote de design system publicável, não permanecer presa dentro de um app específico.
 - O padrão "CapabilityResult com `success:false` é uma resposta HTTP normal (400), não uma falha de transporte" precisa ser tratado explicitamente por qualquer client novo do Gateway — um parser de erro genérico (`{error: string}`) quebra silenciosamente para esse formato, como ocorreu aqui (`"[object Object]"`) até ser corrigido.
 - A ausência de um endpoint HTTP para o Context Hub é o primeiro caso concreto, fora do núcleo cognitivo, de um consumidor externo precisando de um contrato que só existe como função interna — evidência real (não hipotética) a favor de priorizar o MVP-02.
+
+---
+
+## 13. Consolidação do Forge MVP-01 no luna-frontend (Dev Mode) e preparação de deploy
+
+Etapa de consolidação, não de desenvolvimento: objetivo único foi tornar o Forge MVP-01 utilizável em produção, sem novos MVPs, sem alteração de backend/Gateway/Hipocampo/Provider Engine/Convergia/contratos públicos. Código em `raugustorubens-design/luna-frontend`, branch `claude/forge-dev-mode`.
+
+### O que mudou de arquitetura desde a §12
+A decisão da §12 era migrar `forge/` para um repositório `luna-forge` próprio assim que a permissão de criação de repositório fosse resolvida. **Esta etapa seguiu uma instrução explícita diferente do usuário**: consolidar o Forge dentro do `luna-frontend` como um dos "modos de operação" desse frontend (User Mode + Forge/Dev Mode; Modo Comercial/Renascer fica para depois), em vez de um repositório dedicado. `forge/` no monorepo `luna` foi marcado como superseded (README/ROADMAP atualizados, código mantido como referência histórica, não removido).
+
+### Migração técnica (Descobrir → Integrar → Criar)
+`luna-frontend` era um protótipo Next.js 15 / React 19 (Hero, Cognitive Dashboard, Pipeline View, Chat Terminal, Observability Panel) — stack diferente do Forge MVP-01 standalone (Vite/React 18). Todo o código funcional do MVP-01 foi reaproveitado integralmente (Explorer, Editor, Chat, GitPanel, Terminal, ContextPanel, api-client.ts, componentes shadcn/radix) — nenhum componente foi recriado. As únicas mudanças foram estruturais, exigidas pela troca de bundler/framework:
+
+- **Monaco Editor**: o loader AMD self-hosted (`public/monaco-editor/vs`, copiado de `node_modules` via `scripts/copy-monaco-assets.mjs`) precisou de um `getWorkerUrl` bootstrap (data: URL que fixa `MonacoEnvironment.baseUrl` como URL absoluta antes de `importScripts`) — sem isso, os workers do Monaco (json/css/html/ts) falhavam com `Failed to parse URL` porque caminhos relativos não resolvem de dentro do contexto de um Worker criado a partir de blob:. **Bug real, encontrado e corrigido durante a verificação local com Playwright**, não uma hipótese.
+- **Terminal (xterm) e MonacoEditor**: carregados via `next/dynamic(..., { ssr:false })` — ambos tocam globals de browser (`self`) em module scope, o que quebra a renderização de client components no servidor (Next.js App Router renderiza "use client" no servidor também, na primeira passada).
+- **Terminal WebSocket + git status local**: consolidados no mesmo processo Next.js via `server.ts` customizado (Next.js request handler + `WebSocketServer` no mesmo `http.Server`) — um único serviço Railway, não dois como no MVP-01 standalone (que tinha `apps/web` + `apps/server` separados).
+- `/forge` marcado `force-dynamic` — evita a pré-renderização estática (sem sentido para uma ferramenta interativa, e era a causa raiz do erro `self is not defined` no build).
+
+### Constituição executável
+`scripts/constitution-check.mjs` portado e adaptado para escanear `app/`, `components/`, `lib/` e `server.ts` do luna-frontend inteiro (não só uma pasta `forge/`) — 29 arquivos escaneados, aprovado. Mesmas três regras: nunca acessa banco diretamente, nunca chama provider diretamente, nunca importa órgão interno.
+
+### Verificação real
+`pnpm run typecheck` limpo; 2/2 testes reais (`lib/forge/__tests__/git.test.ts`, mesmos testes do MVP-01, com `mkdtemp` real); `constitution-check.mjs` aprovado; `pnpm run build` (Next.js) concluído com sucesso (`/` estático, `/forge` e `/api/forge/git-status` dinâmicos). Smoke test end-to-end via Playwright real, servidor de produção (`pnpm run start`) rodando local: User Mode carrega inalterado; navegação real via link "Dev Mode →"/"← User Mode"; Explorer lista arquivos reais (via `filesystem.list` do Gateway); Editor abre `package.json` real do backend com syntax highlighting real do Monaco (confirmando o fix do worker); Painel de Contexto mostra branch/último commit reais (`claude/forge-dev-mode`, commit real); Terminal executa comando real via WebSocket (`echo luna-frontend-forge-ok` ecoado); Painel GitHub mostra erro real do Gateway (`GitHub request failed with status 401`, sem token neste sandbox) em vez de erro engolido; Chat envia mensagem real (resposta bloqueada por limitação de rede do sandbox, não da aplicação — ver Problemas conhecidos).
+
+### Deploy — não executado, apenas preparado
+`railway.json` e `DEPLOY.md` adicionados ao `luna-frontend` (builder Nixpacks, `pnpm run build`/`pnpm run start`, variáveis de ambiente documentadas — principalmente `NEXT_PUBLIC_LUNA_API_BASE_URL` apontando para o backend real em produção). **O deploy em si não pôde ser disparado nem verificado nesta sessão**: o ambiente sandbox não tem acesso de rede a nenhum domínio `railway.app` (bloqueio de política confirmado via proxy — `403` em CONNECT) nem `RAILWAY_TOKEN` configurado. Decisão explícita do usuário diante desse bloqueio: preparar código + configuração de deploy, e o próprio usuário dispara o deploy no dashboard do Railway.
+
+### Problemas conhecidos (registrados, não corrigidos — fora do escopo desta etapa)
+- **Painel de Contexto não encontra `luna_context/LUNA_CONTEXT.md`**: o processo do Gateway (backend) roda com working directory igual a `apps/frontend/artifacts/api-server`, que tem seu próprio `luna_context/` local (vazio, arquivos `.md` de 0 bytes, não relacionado a este arquivo). `filesystem.read` do Gateway é relativo a esse cwd, não à raiz do monorepo — pré-existente, não introduzido por esta migração, fora do escopo desta etapa ("não alterar o backend/Gateway").
+- **Chat não recebe resposta neste sandbox**: `POST /api/chat` falha após ~2min com erro de `drizzle-orm`/`pg` ao inserir em `conversations` — consistente com a limitação de rede já documentada nesta sessão (sem TCP direto para Postgres a partir deste ambiente). Não é um bug do Forge/luna-frontend; a mensagem do usuário é enviada e exibida corretamente, só a resposta depende de conectividade que este sandbox não tem.
+- **Painel GitHub sem token**: capabilities `github.*` retornam 401 neste ambiente (sem `GITHUB_TOKEN` configurado no backend local usado para verificação) — comportamento correto do Forge (erro real exibido), depende de configuração de ambiente do backend em produção, não de código.
+
+### Novos MVPs registrados
+Nenhum novo — `ROADMAP.md` (agora também em `luna-frontend`, além de `forge/ROADMAP.md`) mantém os mesmos MVP-02 a MVP-10 da §12, sem alteração de escopo.
+
+### Inferências consolidadas
+- Migrar um app de Vite/React 18 para Next.js/React 19 dentro do mesmo produto expõe suposições de "browser-only" que o Vite tolerava silenciosamente (module-scope `self`/`window`) — qualquer futura migração de stack deve tratar isso como checklist, não surpresa.
+- O bug do `getWorkerUrl` do Monaco é o tipo de problema que só aparece com verificação real em navegador (Playwright), nunca em typecheck/build — reforça por que este projeto trata "verificação real" como não-negociável antes de declarar uma etapa concluída.
+- A limitação de rede do sandbox para `railway.app` (bloqueio total, não parcial) é mais severa do que a limitação de Postgres documentada na §6 — vale registrar como característica estável deste ambiente de desenvolvimento, não uma falha pontual, para qualquer etapa futura que dependa de deploy real.
