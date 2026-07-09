@@ -280,3 +280,84 @@ Nenhum novo — MVP-02 marcado concluído em `forge/ROADMAP.md`/`luna-frontend/R
 - A pergunta "o Context Hub já existe?" tinha duas respostas diferentes dependendo da granularidade — sim como função interna, não como contrato público — e essa distinção é exatamente o que "Descobrir → Integrar → Criar" existe para forçar a se explicitar antes de escrever código novo.
 - O bug do Painel de Contexto não encontrar o arquivo de continuidade (registrado como "pré-existente, fora de escopo" na §13) se resolveu como consequência direta de uma mudança arquitetural correta, não de um fix pontual — evidência de que a causa raiz identificada na auditoria ("Forge não deveria ler arquivos") era a certa, e não um sintoma superficial.
 - Duas regras de constituição já testadas antes desta etapa (Gateway cognition-free; Memory Engine como único dono de persistência) restringiram ativamente o design desta etapa — a arquitetura anterior não é só documentação, é um conjunto de invariantes que decisões novas precisam respeitar ou conscientemente registrar como exceção, nunca ignorar silenciosamente.
+
+---
+
+## 15. Guardian MVP-01 — Guardião da Informação
+
+Fecha a cadeia cognitiva do organismo: elimina o último acoplamento arquitetural relevante entre um órgão cognitivo (Memory Engine) e infraestrutura física de armazenamento. Registrado como dívida na §14, resolvido aqui. Prioridade absoluta desta etapa foi estabilidade — "se houver qualquer risco de regressão, parar e reportar" — não velocidade.
+
+### Auditoria do repositório GitHub `luna-api` (obrigatória antes de qualquer código)
+
+`raugustorubens-design/luna-api` era um único arquivo (`index.js`, 227 linhas) + `package.json` mínimo (Express + `pg` + `axios` + `cors`, sem TypeScript, sem testes). Achados reais:
+
+- **O arquivo, como estava commitado, não conseguia nem carregar**: `const pool = new Pool(...)` declarado duas vezes na mesma função (bloco de debug duplicado, commit "Add debug logging for database connection") — `SyntaxError: Identifier 'pool' has already been declared`, confirmado rodando `node --check`. Removido como correção de bug pura (a segunda declaração era 100% morta) — não é mudança de comportamento, já que o arquivo não tinha comportamento nenhum para quebrar neste estado.
+- **Responsabilidades atuais**: três rotas legadas — `GET /` (health check trivial), `GET /api/github/file` (leitura de arquivo do GitHub via `axios` + token — sobreposta e inferior à capability `github.read_file` já madura no Gateway do monorepo), `POST /chat` (protótipo de chat com memória própria, tabela `memoria_eventos`, via `pg.Pool` bruto — **diferente e não relacionada** à tabela real `memoria_luna` que o Memory Engine usa hoje).
+- **Componentes reutilizáveis**: nenhum do código existente foi diretamente reaproveitado (é tudo prototípico/obsoleto) — mas o *padrão* de configuração (`cors()`, `express.json()`, tratamento de `uncaughtException`) foi preservado como está.
+- **Componentes obsoletos**: as três rotas legadas descrevem um protótipo anterior à arquitetura atual (confirma o que a ADR-004 já registrava: "luna-api — protótipo de backend Node, fonte real ou cópia quase idêntica do que foi encontrado como apps/api no monorepo").
+- **Componentes que devem permanecer**: as três rotas legadas, **inalteradas** — não há evidência de que nada mais no organismo dependa delas, mas na ausência de certeza sobre se algo externo ainda as chama, a instrução de "não quebrar comportamento público" foi seguida à risca. Nenhuma removida, nenhuma reescrita.
+- **Decisão**: nenhuma evidência objetiva de que outro repositório fosse melhor candidato — pelo contrário, o tamanho mínimo e a natureza prototípica do `luna-api` tornam-no um hospedeiro de baixo risco para infraestrutura nova (pouca superfície existente para quebrar). Prosseguiu-se com `luna-api`, sem renomear, conforme instruído.
+
+### O que foi construído
+
+Em `luna-api` (branch `claude/guardian-mvp-01`), `src/guardian/`:
+- `contracts.js` — contrato público (JSDoc, já que o repositório é JS puro — introduzir TypeScript seria mudança de tooling maior do que esta etapa pede): `save`/`update`/`delete`/`get`/`search` + formato de auditoria.
+- `audit.js` — `InMemoryAuditSink`/`GuardianAuditor`, mesmo padrão já usado pelo `GatewayAuditor` no monorepo (`src/gateway/audit/audit.ts`) — reaproveitado, não reinventado.
+- `adapters/supabase-adapter.js` — único módulo autorizado a importar `@supabase/supabase-js`. Mesma convenção de variáveis de ambiente que o Memory Engine já usava (`SUPABASE_URL`/`SUPABASE_KEY`), não uma nova.
+- `guardian.js` — delega ao adapter, audita cada operação (sucesso e falha). Nunca decide/infere/consolida — testado explicitamente.
+- `routes.js` — contrato HTTP público (`/guardian/save`, `/update`, `/delete`, `/get`, `/search`, `/audit`), montado em `index.js` ao lado das rotas legadas.
+
+No monorepo `luna` (`apps/frontend/artifacts/api-server`):
+- `src/luna/guardian-contract.ts` — o mesmo contrato (`GuardianContract`), espelhado como interface TypeScript.
+- `src/luna/guardian-local-adapter.ts` — implementação **local e transitória** do contrato, usando exatamente a mesma lógica que o Memory Engine já tinha (mesmo cliente `@supabase/supabase-js`, mesmas queries) — zero mudança de comportamento observável.
+- `src/luna/memory-engine.ts` — refatorado para depender só de `GuardianContract`, injetando `createLocalGuardianAdapter()` como default em vez de importar `lib/supabase` diretamente.
+
+### Por que uma implementação local, não uma chamada HTTP real ao Guardian
+
+Esta foi a decisão arquitetural mais importante da etapa, e vale registrar o raciocínio: o Guardian oficial vive num repositório separado (`luna-api`, "um órgão, um repositório"), e o prompt desta etapa é explícito — **"Não realizar deploy. Preparar apenas a arquitetura."** Se o Memory Engine passasse a chamar o Guardian por HTTP, o organismo dependeria de um serviço que não está implantado em lugar nenhum — a primeira tentativa real de persistência quebraria em produção. Isso seria exatamente o tipo de regressão que a instrução "não quebrar o organismo" veio para evitar.
+
+A leitura consistente com todas as instruções da etapa (não fazer deploy + não quebrar nada + Memory Engine deve depender só do contrato do Guardian) é: o contrato é uma interface TypeScript, não necessariamente uma chamada de rede. `guardian-local-adapter.ts` satisfaz o mesmo contrato que o Guardian oficial define, com a mesma lógica que já funcionava — e quando o Guardian for implantado (etapa futura, fora de escopo aqui), só esta classe muda para um cliente HTTP. Memory Engine e todo o resto do organismo continuam dependendo só de `GuardianContract`, sem saber que a troca aconteceu. Isso cumpre literalmente o critério de conclusão ("Memory Engine depende apenas dos contratos públicos do Guardian") sem introduzir o risco que "não realizar deploy" existe para evitar.
+
+### Estratégia de migração — ordem seguida
+
+1. Extrair contratos (`contracts.js` em luna-api; `guardian-contract.ts` no monorepo).
+2. Extrair interfaces (`guardian.js`; `GuardianContract`).
+3. Extrair adapters (`adapters/supabase-adapter.js`; `guardian-local-adapter.ts`).
+4. Memory Engine passou a depender só do contrato (`createMemoryEngine(guardian: GuardianContract = createLocalGuardianAdapter())`).
+5. Todos os testes executados (98/98 no monorepo, 10/10 em luna-api).
+6. Smoke test real: backend local iniciado, `GET /api/context` exercitou `listCheckpoints` de ponta a ponta através do novo `guardian-local-adapter.ts` — mesmo erro real de rede já conhecido (`Host not in allowlist`), agora envolto em `StorageError`, degradando graciosamente exatamente como antes. Confirmado no log do servidor que o caminho passa por `guardian-local-adapter.ts`, não mais por acesso direto.
+7. **Não houve duplicação para remover.** `guardian-local-adapter.ts` não duplica `adapters/supabase-adapter.js` de `luna-api` no sentido tradicional (mesmo repositório, duas cópias) — são implementações do mesmo contrato em repositórios diferentes, uma delas transitória por decisão explícita (ver acima). A remoção real (apagar `guardian-local-adapter.ts` em favor de um cliente HTTP para o Guardian implantado) é trabalho de uma etapa futura, condicionada ao deploy que esta etapa não fez.
+
+### Constituição executável
+
+Backend (`architecture-check.mjs`): Memory Engine não pode mais importar `supabase`/`drizzle` diretamente (finalmente aplicado — era dívida registrada na §14); apenas `guardian-local-adapter.ts` pode conhecer um driver de armazenamento em todo `src/luna/`; Reporter (interno) confirmado sem acesso a banco. As regras já existentes (Hipocampo, Context Hub, Convergia ↛ banco) permanecem intactas e passando.
+
+Guardian (`luna-api/scripts/architecture-check.mjs`, novo): só `adapters/supabase-adapter.js` pode importar `@supabase/supabase-js`; `guardian.js` nunca decide/infere/consolida; `guardian.js` nunca conhece nomes de tabela (`memoria_luna`/`memoria_eventos`) — isso é responsabilidade de quem chama; as 3 rotas legadas devem permanecer presentes; guarda de regressão contra o bug do `pool` duplicado.
+
+### Verificação real
+
+Backend: `pnpm run typecheck` limpo; **98/98 testes** (2 arquivos novos: `guardian-local-adapter.test.ts` com cliente Supabase fake injetado; `memory-engine.test.ts` reescrito para injetar `GuardianContract` em vez do antigo `MemoryStoreClient`); `test:architecture` aprovado. Guardian (`luna-api`): **10/10 testes** (`guardian.test.js`, `supabase-adapter.test.js`, ambos com adapters/clientes fake injetados); `test:architecture` aprovado; `node --check index.js` confirma que o arquivo agora carrega (bug de sintaxe corrigido); boot real local com env vars fake confirmou as 3 rotas legadas respondendo exatamente como antes e as novas rotas `/guardian/*` funcionando (incluindo falha graciosa quando o Supabase não é alcançável, sem derrubar o servidor). Smoke test end-to-end real no monorepo: backend iniciado, `GET /api/context` exercitou o Memory Engine através do Guardian local, mesmo comportamento observável de antes (erro real de rede degradando para lista vazia).
+
+### Bug real encontrado e corrigido (fora do escopo original, mas necessário)
+`extractMessage`/`StorageError` em `guardian-local-adapter.ts`: a primeira versão assumia `cause instanceof Error`, mas erros reais do Supabase são objetos simples (`{message, code}`), não instâncias de `Error` — o teste `supabase-adapter`/`guardian-local-adapter` pegou isso na hora (mensagem virava `"[object Object]"`). Corrigido para checar `.message` genericamente. Encontrado por teste real, não por inspeção manual — mesma lição já registrada na §13 sobre o bug do Monaco.
+
+### Riscos encontrados
+- **Rotas legadas do `luna-api` não puderam ser verificadas contra tráfego real de produção** — não há como saber, a partir deste ambiente, se algo externo ainda depende de `GET /api/github/file` ou `POST /chat` do jeito que estão. Preservadas por precaução, não porque sua utilidade atual foi confirmada.
+- **A implementação local do Guardian no monorepo é, por definição, uma dívida temporária** — o critério de conclusão "todo acesso físico ocorre exclusivamente através do Guardian" só é 100% verdadeiro no sentido de contrato/tipo nesta etapa, não no sentido de "processo físico separado". Isso é uma consequência direta e documentada de "não realizar deploy" nesta etapa, não um desvio silencioso.
+- **`DATABASE_URL` do `luna-api`** (usado só pelas rotas legadas) não foi auditado quanto a apontar para o mesmo projeto Supabase do organismo principal ou para um banco totalmente separado — não teve efeito nesta etapa (Guardian usa `SUPABASE_URL`/`SUPABASE_KEY`, não `DATABASE_URL`), mas vale investigar antes de decidir o destino final das rotas legadas.
+
+### Decisões arquiteturais
+- Nome do tipo/contrato mantido consistente entre repositórios (`GuardianContract`/`StorageContract`, mesmos nomes de operação) apesar de serem arquivos fisicamente diferentes (JS com JSDoc vs. TypeScript) — não existe hoje um mecanismo de pacote compartilhado entre `luna` e `luna-api`; isso já estava registrado como dívida na ADR-004 ("extrair contratos para um pacote formal e publicável") e continua registrado, não resolvido aqui.
+- `luna-api` não foi renomeado, conforme instruído explicitamente — permanece com esse nome até um MVP futuro de reorganização do ecossistema.
+- Trabalho em `luna-api` feito inteiramente na branch `claude/guardian-mvp-01`; nenhuma alteração direta na `main`.
+
+### Novos MVPs / dívidas registradas
+- Deploy real do Guardian (`luna-api`) e corte do Memory Engine para um `HttpGuardianClient` — só depois disso `guardian-local-adapter.ts` pode ser removido de fato.
+- Extrair um pacote de contratos compartilhado entre `luna` e `luna-api` (dívida já registrada na ADR-004, reafirmada aqui).
+- Decidir o destino das 3 rotas legadas do `luna-api` (manter, migrar para capabilities do Gateway, ou aposentar) — não decidido nesta etapa, que teve prioridade em estabilidade, não limpeza.
+- Investigar se `DATABASE_URL` do `luna-api` aponta para o mesmo projeto Supabase do organismo.
+
+### Inferências consolidadas
+- "Preparar apenas a arquitetura, não fazer deploy" e "Memory Engine deve depender só do contrato do Guardian" só são simultaneamente satisfazíveis se o contrato for tratado como um limite de tipo, não como uma garantia de topologia de rede — essa distinção não estava explícita no prompt, mas é a única leitura que não contradiz as próprias instruções da etapa.
+- Um repositório pequeno e prototípico (poucas linhas, sem testes, com um bug de sintaxe não descoberto) é, contraintuitivamente, um destino de baixo risco para infraestrutura nova — há pouca superfície real para quebrar, ao contrário de um sistema maduro e testado.
+- A auditoria real (rodar `node --check`, tentar conectar de verdade) encontrou dois problemas concretos (`SyntaxError` no `luna-api`; `cause instanceof Error` incorreto no novo código) que uma leitura só do código-fonte não teria pego com a mesma confiança — reforça, pela terceira vez neste arquivo, por que "verificação real" é tratado como não-negociável neste projeto.

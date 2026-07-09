@@ -95,17 +95,47 @@ assert.match(
   "Hipocampo must delegate persistence to the Memory Engine",
 );
 
-// ---- Memory Engine: the only module allowed to own persistence ----
-// Forge MVP-02 registered a future architecture where a "Guardian" (Storage
-// Manager) sits between Memory Engine and Supabase, so Memory Engine itself
-// would stop importing `lib/supabase` directly. Guardian does not exist yet
-// (confirmed by repo-wide search) and building it was explicitly out of
-// scope for "just Context Hub" — so unlike Hipocampo/Context Hub above,
-// there is no `doesNotMatch(.../supabase/)` assertion here. Adding one now
-// would fail against the current, correct, working architecture. See
-// LUNA_CONTEXT.md for the registered decision to defer Guardian.
+// ---- Memory Engine (Guardian MVP-01): depends on the Guardian contract only ----
+// The "Guardian" deferred in Forge MVP-02 now exists — official home is
+// raugustorubens-design/luna-api, but no deploy happened this round ("Não
+// realizar deploy. Preparar apenas a arquitetura."), so Memory Engine
+// depends on `guardian-local-adapter.ts`, a transitional local
+// implementation of the exact same `GuardianContract` that will be swapped
+// for an HTTP client once the real Guardian is reachable. Memory Engine
+// itself must no longer know it's Supabase underneath.
 const memoryEngineSource = read("src/luna/memory-engine.ts");
-assert.match(memoryEngineSource, /supabase/i, "Memory Engine must own persistence");
+assert.doesNotMatch(
+  memoryEngineSource,
+  /supabase|drizzle/i,
+  "Memory Engine must never access the database directly anymore — it depends on the Guardian contract (guardian-local-adapter.ts)",
+);
+assert.match(
+  memoryEngineSource,
+  /GuardianContract|createLocalGuardianAdapter/,
+  "Memory Engine must depend on the Guardian contract",
+);
+
+// ---- Guardian: only guardian-local-adapter.ts may know a storage driver ----
+// (guardian-contract.ts is pure types; guardian-local-adapter.ts is the one
+// permitted exception, exactly like adapters/supabase-adapter.js is the one
+// exception in the official Guardian repo, luna-api.)
+const lunaOrganFiles = listFilesRecursive("src/luna");
+const driverImporters = lunaOrganFiles.filter(
+  (path) => /supabase|drizzle/i.test(read(path)) && !path.endsWith("guardian-local-adapter.ts"),
+);
+assert.deepEqual(
+  driverImporters,
+  [],
+  `Only guardian-local-adapter.ts may know a storage driver — found direct access in: ${driverImporters.join(", ")}`,
+);
+
+// ---- Reporter (internal audit log): never persists to the database ----
+const reporterSource = read("src/luna/reporter.ts");
+assert.doesNotMatch(
+  reporterSource,
+  /supabase|drizzle/i,
+  "Reporter must never access the database directly",
+);
 
 // ---- Gateway remains cognition-free ----
 const gatewayIndexSource = read("src/gateway/index.ts");
