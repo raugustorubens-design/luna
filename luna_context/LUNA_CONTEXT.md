@@ -147,3 +147,13 @@ Extrair as interfaces principais hoje espalhadas em `contracts.ts` por organ (`L
 
 ### Relação entre os dois LUNA_CONTEXT.md
 `raugustorubens-design/Luna-context.md` é a fonte de continuidade em nível de organismo (multi-repositório). Este arquivo (`luna_context/LUNA_CONTEXT.md`, dentro do monorepo `luna`) é o registro detalhado do que acontece dentro do núcleo cognitivo. Os dois devem permanecer consistentes; divergência entre eles é, por definição, um conflito arquitetural a ser registrado, não ignorado.
+
+---
+
+## 11. Consolidação final do Ecossistema (ADR-005) — último prompt macro
+
+A arquitetura completa do ecossistema (mapa de sistemas, classificação, matriz de dependências, contratos oficiais, shared kernel, APIs públicas, roadmap por MVP, estratégia comercial, princípios de longo prazo e constituição executável futura) foi consolidada em `raugustorubens-design/Luna-context.md` → `ECOSYSTEM_ARCHITECTURE.md`, que passa a ser a fonte de verdade — não este arquivo. Ver `docs/architecture/adr-005-ecosystem-architecture-consolidation.md` para o resumo mínimo local.
+
+**Nenhum código foi alterado nesta etapa.** Um achado real emergiu da auditoria (registrado, não corrigido): `src/convergia/training/training-to-memory.ts` chama `checkpoint()` do Memory Engine diretamente, contornando o Hipocampo — violação sutil de "Convergia nunca persiste diretamente" que o `architecture-check.mjs` atual não detecta. Prioridade registrada no roadmap oficial.
+
+Este é o último prompt macro de arquitetura, por decisão explícita desta etapa. Toda evolução futura deste monorepo deve corresponder a um item do roadmap oficial (`ECOSYSTEM_ARCHITECTURE.md` §7), nunca a uma nova consolidação ampla.
