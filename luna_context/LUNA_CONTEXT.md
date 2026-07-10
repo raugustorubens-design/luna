@@ -361,3 +361,43 @@ Backend: `pnpm run typecheck` limpo; **98/98 testes** (2 arquivos novos: `guardi
 - "Preparar apenas a arquitetura, não fazer deploy" e "Memory Engine deve depender só do contrato do Guardian" só são simultaneamente satisfazíveis se o contrato for tratado como um limite de tipo, não como uma garantia de topologia de rede — essa distinção não estava explícita no prompt, mas é a única leitura que não contradiz as próprias instruções da etapa.
 - Um repositório pequeno e prototípico (poucas linhas, sem testes, com um bug de sintaxe não descoberto) é, contraintuitivamente, um destino de baixo risco para infraestrutura nova — há pouca superfície real para quebrar, ao contrário de um sistema maduro e testado.
 - A auditoria real (rodar `node --check`, tentar conectar de verdade) encontrou dois problemas concretos (`SyntaxError` no `luna-api`; `cause instanceof Error` incorreto no novo código) que uma leitura só do código-fonte não teria pego com a mesma confiança — reforça, pela terceira vez neste arquivo, por que "verificação real" é tratado como não-negociável neste projeto.
+
+---
+
+## 16. LUNA-001 — Deploy do Frontend (Railway)
+
+Primeira atividade do novo framework de sprint (uma atividade ativa por vez: LUNA-001 → deploy do frontend; LUNA-002 → validar Forge; LUNA-003 → deploy do Guardian; LUNA-004 → validar Guardian). Cadeia de causas reais encontradas e corrigidas, em ordem — nenhuma foi assumida, todas vieram de evidência (log de build do Railway, screenshot de produção, diagnóstico de rede do navegador).
+
+### Cadeia de causas raiz (luna-frontend, `raugustorubens-design/luna-frontend`)
+1. **Erro de parse do `railway.json` reportado pelo Railway** — auditoria byte a byte (local e no branch remoto) mostrou o arquivo já válido, sem BOM, sem blocos Markdown; não reproduzível a partir do conteúdo exato commitado. Reescrito por precaução (garante escrita limpa) + `$schema` oficial adicionado, sem alterar nenhum valor — commit `8e48a92`. Causa real desse erro específico segue não confirmada, mas o próximo erro (CVEs) apareceu no deploy seguinte, então não bloqueou a investigação.
+2. **Vulnerabilidade crítica em `next@15.1.0`** (4 CVEs, bloqueando o scan de segurança do Railway antes mesmo do build) — corrigido para `next@^15.1.11` (resolvido `15.5.20`) — commit `e98cc76`.
+3. **`NEXT_PUBLIC_LUNA_API_BASE_URL` ausente no build do Railway** — como é uma env var `NEXT_PUBLIC_*`, é embutida em *build time*, não lida em runtime; sem ela configurada no momento do build, o fallback `?? "http://localhost:3001/api"` foi compilado permanentemente no bundle do client, fazendo todo visitante em produção tentar `localhost:3001` (`ERR_CONNECTION_REFUSED`). Fallback agora depende de `NODE_ENV`: produção sem a env var cai no backend real documentado (`strong-celebration-production.up.railway.app`) em vez de `localhost` — commit `003c75e`.
+4. **Deploy confirmado com sucesso** via screenshot real do usuário: `https://luna-frontend-production-ffcc.up.railway.app` carregando o User Mode corretamente, link "Dev Mode →" visível.
+
+Após o passo 3, o frontend passou a chamar o backend real — e expôs a causa seguinte, no backend.
+
+### Causa raiz seguinte (backend, monorepo `luna`)
+
+**Sintomas reportados**: CORS ausente (`No 'Access-Control-Allow-Origin' header`) e `HTTP 502 Bad Gateway` nas chamadas de `luna-frontend-production-ffcc.up.railway.app` para `strong-celebration-production.up.railway.app`.
+
+**Auditoria (sem assumir)**: o único `railway.json` de todo o monorepo (`/railway.json`, raiz do repositório) estava **literalmente inválido como JSON** — confirmado byte a byte (`od -c`, `python3 -m json`) — envolto em blocos de código Markdown (` ```json ` / ` ``` ` como conteúdo real do arquivo, não formatação). Mesmo se fosse JSON válido, seu `startCommand` (`"pnpm run preview"`) não corresponde a nenhum script do backend real (`apps/frontend/artifacts/api-server`) — `"preview"` só existe em `apps/frontend/package.json`, o protótipo Vite órfão identificado desde a primeira auditoria deste projeto. O backend real vive num diretório aninhado com seu próprio `pnpm-lock.yaml` (projeto standalone, não workspace linkado à raiz do monorepo) e precisa ser buildado/iniciado de dentro dele.
+
+**Diagnóstico**: com `railway.json` inválido/incorreto, o processo real do backend nunca chega a escutar na porta esperada — o proxy de borda do Railway responde `502 Bad Gateway` para toda requisição, e por isso nenhum cabeçalho CORS aparece: a requisição nunca alcança o Express (onde `app.use(cors())` já está corretamente configurado e testado — ver abaixo). A ausência de CORS é sintoma do 502, não um bug separado.
+
+**Fix mínimo aplicado**: `railway.json` reescrito como JSON válido, com `buildCommand`/`startCommand` fazendo `cd apps/frontend/artifacts/api-server` antes de `pnpm install && pnpm run build` / `pnpm run start` — a sequência exata que já funciona localmente (usada durante toda esta sessão via `pnpm run dev`).
+
+**Verificação real**: sequência de build/start reproduzida localmente exatamente como o Railway executaria — `pnpm install && pnpm run build` (produz `dist/index.mjs`, sucesso) seguido de `pnpm run start` (serve real em `:3001`). Testado com `curl` real: `OPTIONS /api/context` e `OPTIONS /api/gateway/execute` com `Origin: https://luna-frontend-production-ffcc.up.railway.app` retornam `204` com `Access-Control-Allow-Origin: *` e `Access-Control-Allow-Methods`; `GET /api/context` com o mesmo `Origin` retorna `200` com o cabeçalho CORS presente e dados reais do Context Hub. A configuração de CORS em `app.ts` (`app.use(cors())`, sem opções) nunca precisou de alteração — já lida corretamente com preflight OPTIONS por padrão. 98/98 testes, typecheck limpo, `test:architecture` aprovado.
+
+**Limitação desta verificação**: não foi possível confirmar contra o Railway real (sem acesso de rede a `railway.app` neste sandbox, confirmado repetidamente ao longo desta sessão) que o serviço do backend de fato usa Root Directory = raiz do repositório (o que tornaria este `railway.json` o arquivo realmente lido). É a explicação mais consistente com as evidências disponíveis (único `railway.json` do repositório, com um `startCommand` claramente incorreto), mas o usuário precisa confirmar o deploy real após o push.
+
+### Achado de segurança, registrado e NÃO corrigido nesta etapa (fora de escopo — "uma atividade por vez")
+Durante a verificação, o log de boot do backend imprimiu a `DATABASE_URL` completa em texto plano, incluindo a senha real do Postgres (`apps/frontend/lib/db/src/index.ts:11`, `console.log("DATABASE_URL:", process.env.DATABASE_URL)`) — todo start do processo (local ou no Railway) expõe a credencial nos logs. Não corrigido aqui por decisão explícita do usuário de tratar uma atividade por vez nesta etapa (só deploy do frontend); registrado para correção em uma próxima atividade dedicada.
+
+### Arquivos alterados
+- `railway.json` (raiz do monorepo `luna`) — reescrito: JSON válido + `buildCommand`/`startCommand` apontando para o backend real.
+
+### Decisões arquiteturais
+- Nenhuma. Esta etapa foi puramente deploy/configuração, conforme o escopo pedido ("Não implementar novas funcionalidades. Não alterar arquitetura.").
+
+### Próxima atividade do sprint
+LUNA-002 — Validar Forge (checklist Frontend/Forge/Chat/Explorer/Editor/Terminal/Context Hub em produção, após o usuário confirmar que este deploy do backend funcionou).
