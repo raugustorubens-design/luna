@@ -1,5 +1,6 @@
 import { logger } from "../lib/logger";
-import { supabase } from "../lib/supabase";
+import { createLocalGuardianAdapter } from "./guardian-local-adapter";
+import type { GuardianContract } from "./guardian-contract";
 import type { LunaMemoryRecord } from "./contracts";
 
 export interface MemoryPersistInput {
@@ -10,60 +11,49 @@ export interface MemoryPersistInput {
   conteudo: Record<string, unknown>;
 }
 
-interface MemoryQueryTerminal {
-  limit(count: number): {
-    order(column: string, options: { ascending: boolean }): PromiseLike<{ data: unknown; error: unknown }>;
-  };
-}
-
-interface MemoryQueryBuilder extends MemoryQueryTerminal {
-  eq(column: string, value: unknown): MemoryQueryTerminal;
-}
-
-export interface MemoryStoreClient {
-  from(table: string): {
-    insert(rows: Record<string, unknown>[]): PromiseLike<{ error: unknown }>;
-    select(columns: string): MemoryQueryBuilder;
-  };
-}
-
 const MEMORY_TABLE = "memoria_luna";
+const ORIGIN = "memory-engine";
 
 /**
- * Memory Engine: the only module allowed to touch `memoria_luna`.
- * Everything else (Hipocampo, Cognitive Engine) reaches persistence through
- * the functions exported here.
+ * Memory Engine: the only cognitive module allowed to reach persistence —
+ * and even it never touches a storage driver directly anymore. Every
+ * physical operation goes through the Guardian's contract (Guardian MVP-01);
+ * this file doesn't know which database is underneath, doesn't know
+ * connection details, doesn't import a driver. Everything else (Hipocampo,
+ * Cognitive Engine, Context Hub) reaches persistence through the functions
+ * exported
+ * here, same as before — this refactor changes what's *behind* Memory
+ * Engine, not its public surface.
  */
-export function createMemoryEngine(client: MemoryStoreClient = supabase as unknown as MemoryStoreClient) {
+export function createMemoryEngine(guardian: GuardianContract = createLocalGuardianAdapter()) {
   async function persistMemory(memory: MemoryPersistInput): Promise<void> {
-    const { error } = await client.from(MEMORY_TABLE).insert([
-      {
-        tipo: memory.tipo,
-        contexto: memory.contexto,
-        conteudo: memory.conteudo,
-        titulo: memory.titulo,
-        empresa_id: memory.empresa_id,
-      },
-    ]);
-
-    if (error) {
+    try {
+      await guardian.save(
+        {
+          collection: MEMORY_TABLE,
+          data: {
+            tipo: memory.tipo,
+            contexto: memory.contexto,
+            conteudo: memory.conteudo,
+            titulo: memory.titulo,
+            empresa_id: memory.empresa_id,
+          },
+        },
+        ORIGIN,
+      );
+    } catch (error) {
       logger.error({ err: error }, "MEMORY ENGINE PERSIST ERROR");
     }
   }
 
   async function retrieveMemory(_query: string): Promise<LunaMemoryRecord[]> {
-    const { data, error } = await client
-      .from(MEMORY_TABLE)
-      .select("*")
-      .limit(10)
-      .order("criado_em", { ascending: false });
-
-    if (error) {
+    try {
+      const records = await guardian.search({ collection: MEMORY_TABLE, limit: 10, orderBy: "criado_em", ascending: false }, ORIGIN);
+      return records as LunaMemoryRecord[];
+    } catch (error) {
       logger.error({ err: error }, "MEMORY ENGINE RETRIEVE ERROR");
       return [];
     }
-
-    return (data || []) as LunaMemoryRecord[];
   }
 
   /**
@@ -87,19 +77,16 @@ export function createMemoryEngine(client: MemoryStoreClient = supabase as unkno
    * only wrote). No new table, no new source of truth.
    */
   async function listCheckpoints(limit = 5): Promise<LunaMemoryRecord[]> {
-    const { data, error } = await client
-      .from(MEMORY_TABLE)
-      .select("*")
-      .eq("tipo", "checkpoint")
-      .limit(limit)
-      .order("criado_em", { ascending: false });
-
-    if (error) {
+    try {
+      const records = await guardian.search(
+        { collection: MEMORY_TABLE, filter: { tipo: "checkpoint" }, limit, orderBy: "criado_em", ascending: false },
+        ORIGIN,
+      );
+      return records as LunaMemoryRecord[];
+    } catch (error) {
       logger.error({ err: error }, "MEMORY ENGINE LIST CHECKPOINTS ERROR");
       return [];
     }
-
-    return (data || []) as LunaMemoryRecord[];
   }
 
   return { persistMemory, retrieveMemory, checkpoint, listCheckpoints };
