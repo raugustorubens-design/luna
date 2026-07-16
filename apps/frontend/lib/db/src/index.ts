@@ -7,9 +7,6 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-// ================= ENV =================
-console.log("DATABASE_URL:", process.env.DATABASE_URL);
-
 // ================= POOL =================
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
