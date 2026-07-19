@@ -9,6 +9,10 @@ import { findRepoRoot } from "./repo-root";
 // directory shallower than src/lib) or run under `pnpm test` (different cwd).
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 
+// Resolved relative to this file rather than process.cwd() so it finds the
+// repo-root .env regardless of the invoking working directory (e.g. `pnpm
+// dev` runs with cwd at this package's root, while the test runner's cwd is
+// the workspace root two levels up).
 dotenv.config({
   path: path.join(findRepoRoot(MODULE_DIR), ".env"),
 });
