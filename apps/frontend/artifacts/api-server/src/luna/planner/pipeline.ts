@@ -6,7 +6,7 @@
 // Every stage is a small, testable function. The pipeline only assembles
 // their outputs - it holds no cognition of its own.
 
-import { emitAudit } from "../audit";
+import { emitReport } from "../reporter";
 import { analyze } from "./analysis";
 import { assessImpact } from "./impact";
 import { resolveCapabilities } from "./capabilities";
@@ -23,19 +23,19 @@ export async function runPlannerPipeline(
   memory: PlannerMemoryPort,
   approvalPolicy: PlannerApprovalPolicy = new DefaultPlannerApprovalPolicy(),
 ): Promise<StructuredPlan> {
-  emitAudit({ name: "planner.pipeline.started", evidence: { objective: request.objective } });
+  emitReport({ name: "planner.pipeline.started", evidence: { objective: request.objective } });
 
-  emitAudit({ name: "planner.reconstruction.started" });
+  emitReport({ name: "planner.reconstruction.started" });
   const reconstructedState = await memory.reconstruct({ objective: request.objective, context: request.context });
-  emitAudit({ name: "planner.reconstruction.completed", evidence: { conceptCount: reconstructedState.concepts.length } });
+  emitReport({ name: "planner.reconstruction.completed", evidence: { conceptCount: reconstructedState.concepts.length } });
 
   const steps = analyze(request.objective, reconstructedState, request.capabilityInventory);
-  emitAudit({ name: "planner.analysis.completed", evidence: { stepCount: steps.length } });
+  emitReport({ name: "planner.analysis.completed", evidence: { stepCount: steps.length } });
 
   const dependencies = steps.flatMap((step) => step.dependsOn.map((dependsOn) => ({ step: step.id, dependsOn })));
 
   const impact = assessImpact(steps, request.capabilityInventory);
-  emitAudit({ name: "planner.impact.assessed", evidence: { level: impact.level, reversible: impact.reversible } });
+  emitReport({ name: "planner.impact.assessed", evidence: { level: impact.level, reversible: impact.reversible } });
 
   const { capabilityIds, risks: capabilityRisks } = resolveCapabilities(steps, request.capabilityInventory);
 
@@ -45,7 +45,7 @@ export async function runPlannerPipeline(
   }
 
   const approvalRequired = approvalPolicy.requiresApproval({ capabilityInventory: request.capabilityInventory, usedCapabilityIds: capabilityIds, impact });
-  emitAudit({ name: "planner.approval.evaluated", evidence: { approvalRequired } });
+  emitReport({ name: "planner.approval.evaluated", evidence: { approvalRequired } });
 
   const priority = derivePriority(approvalRequired, impact.level);
 
@@ -65,7 +65,7 @@ export async function runPlannerPipeline(
     reconstructedState,
   };
 
-  emitAudit({ name: "planner.plan.assembled", evidence: { priority: plan.priority, approvalRequired: plan.approvalRequired, stepCount: plan.steps.length } });
+  emitReport({ name: "planner.plan.assembled", evidence: { priority: plan.priority, approvalRequired: plan.approvalRequired, stepCount: plan.steps.length } });
 
   return plan;
 }

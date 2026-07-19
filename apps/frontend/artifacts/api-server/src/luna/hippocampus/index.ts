@@ -10,7 +10,7 @@
 // and declared, ready for real cognition to be layered on top later.
 
 import { randomUUID } from "node:crypto";
-import { emitAudit } from "../audit";
+import { emitReport } from "../reporter";
 import { applyCognitiveFilter } from "./cognitive-filter";
 import { CognitiveIndex } from "./cognitive-index";
 import { MemoryReconstructor } from "./reconstruction";
@@ -47,7 +47,7 @@ export class Hippocampus {
       },
     });
 
-    emitAudit({ name: "hippocampus.filter.decided", evidence: { action: decision.action, reason: decision.reason, targetKey: decision.targetKey } });
+    emitReport({ name: "hippocampus.filter.decided", evidence: { action: decision.action, reason: decision.reason, targetKey: decision.targetKey } });
 
     switch (decision.action) {
       case "discard":
@@ -82,7 +82,7 @@ export class Hippocampus {
 
     const state = this.reconstructor.reconstruct(input, concepts, relations, checkpoints);
 
-    emitAudit({
+    emitReport({
       name: "hippocampus.reconstruction.completed",
       evidence: { objective: input.objective, conceptCount: state.concepts.length, relationCount: state.relations.length },
     });
@@ -126,7 +126,7 @@ export class Hippocampus {
     });
 
     await this.store.saveConcept(concept);
-    emitAudit({ name: "hippocampus.concept.created", evidence: { key: concept.key, version: concept.version } });
+    emitReport({ name: "hippocampus.concept.created", evidence: { key: concept.key, version: concept.version } });
     return { decision, concept };
   }
 
@@ -149,7 +149,7 @@ export class Hippocampus {
     await this.store.saveConcept(superseded);
     await this.store.saveConcept(next);
 
-    emitAudit({ name: "hippocampus.concept.evolved", evidence: { key: next.key, fromVersion: superseded.version, toVersion: next.version } });
+    emitReport({ name: "hippocampus.concept.evolved", evidence: { key: next.key, fromVersion: superseded.version, toVersion: next.version } });
     return { decision, concept: next };
   }
 
@@ -164,7 +164,7 @@ export class Hippocampus {
     };
 
     await this.store.saveRelation(relation);
-    emitAudit({ name: "hippocampus.relation.updated", evidence: { fromKey: relation.fromKey, toKey: relation.toKey, relationType: relation.relationType } });
+    emitReport({ name: "hippocampus.relation.updated", evidence: { fromKey: relation.fromKey, toKey: relation.toKey, relationType: relation.relationType } });
     return { decision, relation };
   }
 
@@ -183,7 +183,7 @@ export class Hippocampus {
     };
 
     await this.store.saveCheckpoint(checkpoint);
-    emitAudit({ name: "hippocampus.checkpoint.updated", evidence: { checkpointId: checkpoint.id, conceptCount: checkpoint.conceptRefs.length } });
+    emitReport({ name: "hippocampus.checkpoint.updated", evidence: { checkpointId: checkpoint.id, conceptCount: checkpoint.conceptRefs.length } });
     return { decision, checkpoint };
   }
 }
