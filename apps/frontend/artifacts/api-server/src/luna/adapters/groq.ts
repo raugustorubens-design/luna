@@ -18,6 +18,10 @@ interface GroqResponse {
 export class GroqAdapter implements ProviderAdapter {
   readonly id = "groq";
 
+  isConfigured(): boolean {
+    return Boolean(process.env.GROQ_API_KEY);
+  }
+
   async execute(input: ProviderExecutionInput): Promise<string> {
     const apiKey = process.env.GROQ_API_KEY;
 

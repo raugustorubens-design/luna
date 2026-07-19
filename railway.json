@@ -1,10 +1,10 @@
-```json
 {
+  "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS"
+    "builder": "NIXPACKS",
+    "buildCommand": "cd apps/frontend/artifacts/api-server && pnpm install && pnpm run build"
   },
   "deploy": {
-    "startCommand": "pnpm run preview"
+    "startCommand": "cd apps/frontend/artifacts/api-server && pnpm run start"
   }
 }
-```

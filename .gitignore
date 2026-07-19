@@ -10,7 +10,11 @@ node_modules/
 # IDE
 .vscode/settings.json
 .idea/
+*.swp
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Build output
+forge/apps/web/dist/

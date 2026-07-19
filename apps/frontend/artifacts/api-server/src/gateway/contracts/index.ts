@@ -57,6 +57,8 @@ export type {
   FilesystemExistsInput,
   FilesystemExistsOutput,
 } from "./filesystem";
+export type { RailwayAdapter, RailwayGetDeploymentStatusInput, RailwayGetDeploymentStatusOutput } from "./railway";
+export type { N8nAdapter, N8nTriggerWorkflowInput, N8nTriggerWorkflowOutput } from "./n8n";
 export type { Capability, CapabilityError, CapabilityEvidence, CapabilityRequest, CapabilityResult, RollbackableCapability } from "./capability";
 export { isRollbackableCapability } from "./capability";
 export type { GatewayActor, GatewayExecutionContext, ContextSyncCheckpoint, ContextSyncPort } from "./context";
