@@ -83,6 +83,60 @@ test("provider router throws when no provider is configured", async () => {
   );
 });
 
+test("provider router tries the preferred provider first, still falling back if it fails", async () => {
+  const first = new StubAdapter("first", true, async () => "first reply");
+  const preferred = new StubAdapter("preferred", true, async () => "preferred reply");
+
+  const router = new ProviderRouter(
+    new Map<string, ProviderAdapter>([
+      ["first", first],
+      ["preferred", preferred],
+    ]),
+  );
+
+  const reply = await router.execute({ message: "hi", context: stubContext() }, { preferredProviderId: "preferred" });
+
+  assert.equal(reply, "preferred reply");
+  assert.equal(preferred.calls, 1);
+  assert.equal(first.calls, 0);
+});
+
+test("provider router falls back past a preferred provider that fails", async () => {
+  const preferred = new StubAdapter("preferred", true, async () => {
+    throw new Error("preferred boom");
+  });
+  const backup = new StubAdapter("backup", true, async () => "backup reply");
+
+  const router = new ProviderRouter(
+    new Map<string, ProviderAdapter>([
+      ["preferred", preferred],
+      ["backup", backup],
+    ]),
+  );
+
+  const reply = await router.execute({ message: "hi", context: stubContext() }, { preferredProviderId: "preferred" });
+
+  assert.equal(reply, "backup reply");
+  assert.equal(preferred.calls, 1);
+  assert.equal(backup.calls, 1);
+});
+
+test("provider router ignores an unknown preferredProviderId and uses the default order", async () => {
+  const first = new StubAdapter("first", true, async () => "first reply");
+  const second = new StubAdapter("second", true, async () => "second reply");
+
+  const router = new ProviderRouter(
+    new Map<string, ProviderAdapter>([
+      ["first", first],
+      ["second", second],
+    ]),
+  );
+
+  const reply = await router.execute({ message: "hi", context: stubContext() }, { preferredProviderId: "nonexistent" });
+
+  assert.equal(reply, "first reply");
+});
+
 test("provider router throws the last error when every configured provider fails", async () => {
   const first = new StubAdapter("first", true, async () => {
     throw new Error("first failed");

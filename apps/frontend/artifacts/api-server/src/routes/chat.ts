@@ -2,6 +2,8 @@ import { runCognitiveEngine } from "../luna/cognitive-engine";
 import { Router, type IRouter } from "express";
 import { eq, sql, count } from "drizzle-orm";
 import { db, conversationsTable, messagesTable } from "@workspace/db";
+import { logger } from "../lib/logger";
+import { resolveProviderOverride } from "./chat-provider-override";
 
 import {
   SendMessageBody,
@@ -17,6 +19,8 @@ import {
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+const FALLBACK_REPLY = "A LUNA não conseguiu responder agora — tenta de novo em instantes.";
 
 // ================= CHAT =================
 router.post("/chat", async (req, res): Promise<void> => {
@@ -112,9 +116,16 @@ router.post("/chat", async (req, res): Promise<void> => {
   }
 
   // ================= LUNA CORE =================
-  const lunaResponse = await runCognitiveEngine(content);
+  const provider = resolveProviderOverride(req.body, req.header("X-Luna-Dev-Mode"));
 
-  const aiReply = lunaResponse.reply;
+  let aiReply: string;
+  try {
+    const lunaResponse = await runCognitiveEngine(content, { provider });
+    aiReply = lunaResponse.reply;
+  } catch (err) {
+    logger.error({ err }, "cognitive_engine.failed");
+    aiReply = FALLBACK_REPLY;
+  }
 
   // ================= SALVA RESPOSTA =================
   const [assistantMsg] = await db
