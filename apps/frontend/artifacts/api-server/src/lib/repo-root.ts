@@ -1,5 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * Walks up from `startDir` until it finds the repo's `.git` directory and
@@ -28,3 +30,7 @@ export function findRepoRoot(startDir: string): string {
     dir = parent;
   }
 }
+
+const moduleDir = dirname(fileURLToPath(import.meta.url));
+
+export const repoRoot = findRepoRoot(moduleDir);

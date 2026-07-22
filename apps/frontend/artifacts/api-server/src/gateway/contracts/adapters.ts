@@ -1,3 +1,5 @@
+import type { CapabilityManifest } from "./manifest";
+
 export interface GithubReadFileInput {
   owner: string;
   repo: string;
@@ -298,4 +300,266 @@ export interface GithubAdapter {
   closeIssue(input: GithubCloseIssueInput): Promise<GithubCloseIssueOutput>;
   commentPullRequest(input: GithubCommentPullRequestInput): Promise<GithubCommentPullRequestOutput>;
   deleteComment(input: GithubDeleteCommentInput): Promise<GithubDeleteCommentOutput>;
+}
+
+export interface SupabaseQueryInput {
+  table: string;
+  select?: string;
+  filters?: Record<string, unknown>;
+  limit?: number;
+  orderBy?: { column: string; ascending?: boolean };
+}
+
+export interface SupabaseQueryOutput {
+  table: string;
+  rows: Record<string, unknown>[];
+  count: number;
+}
+
+export interface SupabaseInsertInput {
+  table: string;
+  records: Record<string, unknown>[];
+}
+
+export interface SupabaseInsertOutput {
+  table: string;
+  inserted: Record<string, unknown>[];
+  count: number;
+}
+
+export interface SupabaseUpdateInput {
+  table: string;
+  values: Record<string, unknown>;
+  filters: Record<string, unknown>;
+}
+
+export interface SupabaseUpdateOutput {
+  table: string;
+  updated: Record<string, unknown>[];
+  count: number;
+}
+
+export interface SupabaseDeleteInput {
+  table: string;
+  filters: Record<string, unknown>;
+}
+
+export interface SupabaseDeleteOutput {
+  table: string;
+  deleted: Record<string, unknown>[];
+  count: number;
+}
+
+export interface SupabaseRpcInput {
+  fn: string;
+  args?: Record<string, unknown>;
+}
+
+export interface SupabaseRpcOutput {
+  fn: string;
+  data: unknown;
+}
+
+export interface SupabaseUploadFileInput {
+  bucket: string;
+  path: string;
+  content: string;
+  contentType?: string;
+  upsert?: boolean;
+}
+
+export interface SupabaseUploadFileOutput {
+  bucket: string;
+  path: string;
+  fullPath: string;
+}
+
+export interface SupabaseDownloadFileInput {
+  bucket: string;
+  path: string;
+}
+
+export interface SupabaseDownloadFileOutput {
+  bucket: string;
+  path: string;
+  content: string;
+  contentType: string;
+  size: number;
+}
+
+export interface SupabaseAdapter {
+  query(input: SupabaseQueryInput): Promise<SupabaseQueryOutput>;
+  insert(input: SupabaseInsertInput): Promise<SupabaseInsertOutput>;
+  update(input: SupabaseUpdateInput): Promise<SupabaseUpdateOutput>;
+  delete(input: SupabaseDeleteInput): Promise<SupabaseDeleteOutput>;
+  rpc(input: SupabaseRpcInput): Promise<SupabaseRpcOutput>;
+  uploadFile(input: SupabaseUploadFileInput): Promise<SupabaseUploadFileOutput>;
+  downloadFile(input: SupabaseDownloadFileInput): Promise<SupabaseDownloadFileOutput>;
+}
+
+export interface RailwayDeployInput {
+  serviceId: string;
+  environmentId: string;
+  commitSha?: string;
+}
+
+export interface RailwayDeployOutput {
+  deploymentId: string;
+  serviceId: string;
+  environmentId: string;
+  status: string;
+}
+
+export interface RailwayListServicesInput {
+  projectId: string;
+}
+
+export interface RailwayServiceSummary {
+  id: string;
+  name: string;
+  updatedAt?: string;
+}
+
+export interface RailwayListServicesOutput {
+  projectId: string;
+  services: RailwayServiceSummary[];
+}
+
+export interface RailwayStatusInput {
+  serviceId: string;
+  environmentId: string;
+}
+
+export interface RailwayStatusOutput {
+  serviceId: string;
+  environmentId: string;
+  status: string;
+  latestDeploymentId?: string;
+}
+
+export interface RailwayLogsInput {
+  deploymentId: string;
+  limit?: number;
+}
+
+export interface RailwayLogEntry {
+  timestamp: string;
+  message: string;
+  severity?: string;
+}
+
+export interface RailwayLogsOutput {
+  deploymentId: string;
+  logs: RailwayLogEntry[];
+}
+
+export interface RailwayVariablesInput {
+  serviceId: string;
+  environmentId: string;
+}
+
+export interface RailwayVariablesOutput {
+  serviceId: string;
+  environmentId: string;
+  variables: Record<string, string>;
+}
+
+export interface RailwayRestartServiceInput {
+  serviceId: string;
+  environmentId: string;
+}
+
+export interface RailwayRestartServiceOutput {
+  serviceId: string;
+  environmentId: string;
+  restarted: boolean;
+}
+
+export interface RailwayAdapter {
+  deploy(input: RailwayDeployInput): Promise<RailwayDeployOutput>;
+  listServices(input: RailwayListServicesInput): Promise<RailwayListServicesOutput>;
+  status(input: RailwayStatusInput): Promise<RailwayStatusOutput>;
+  logs(input: RailwayLogsInput): Promise<RailwayLogsOutput>;
+  variables(input: RailwayVariablesInput): Promise<RailwayVariablesOutput>;
+  restartService(input: RailwayRestartServiceInput): Promise<RailwayRestartServiceOutput>;
+}
+
+export type ReporterAuditRepositoryInput = Record<string, never>;
+
+export interface RepositoryApplicationEntry {
+  name: string;
+  type: string;
+  status: string;
+  role: string;
+}
+
+export interface ReporterAuditRepositoryOutput {
+  generatedAt: string;
+  applications: RepositoryApplicationEntry[];
+  gitBranch: string;
+  gitHeadSha: string;
+  gitStatusClean: boolean;
+}
+
+export type ReporterSnapshotInput = Record<string, never>;
+
+export interface ReporterSnapshotOutput {
+  generatedAt: string;
+  checkpointId: string;
+  cognitiveIndexRef: string;
+  checkpointRefs: string[];
+  runtimeMemoryRef: string;
+  architecturalMemoryRefs: string[];
+}
+
+export type ReporterRuntimeStateInput = Record<string, never>;
+
+export interface ReporterRuntimeStateOutput {
+  generatedAt: string;
+  process: {
+    uptimeSeconds: number;
+    nodeVersion: string;
+    memoryRssBytes: number;
+    pid: number;
+  };
+  runtimeState: Record<string, unknown> | null;
+}
+
+export type ReporterRepositoryMapInput = Record<string, never>;
+
+export interface ReporterRepositoryMapOutput {
+  generatedAt: string;
+  repositoryMap: Record<string, unknown> | null;
+}
+
+export type ReporterCapabilityInventoryInput = Record<string, never>;
+
+export interface ReporterCapabilityInventoryOutput {
+  generatedAt: string;
+  capabilityCount: number;
+  capabilities: CapabilityManifest[];
+}
+
+export type ReporterArchitectureReportInput = Record<string, never>;
+
+export interface ReporterArchitectureLayer {
+  name: string;
+  description: string;
+  locations: string[];
+}
+
+export interface ReporterArchitectureReportOutput {
+  generatedAt: string;
+  layers: ReporterArchitectureLayer[];
+  capabilityCount: number;
+  documentationRefs: string[];
+}
+
+export interface ReporterAdapter {
+  auditRepository(input: ReporterAuditRepositoryInput): Promise<ReporterAuditRepositoryOutput>;
+  snapshot(input: ReporterSnapshotInput): Promise<ReporterSnapshotOutput>;
+  runtimeState(input: ReporterRuntimeStateInput): Promise<ReporterRuntimeStateOutput>;
+  repositoryMap(input: ReporterRepositoryMapInput): Promise<ReporterRepositoryMapOutput>;
+  capabilityInventory(input: ReporterCapabilityInventoryInput): Promise<ReporterCapabilityInventoryOutput>;
+  architectureReport(input: ReporterArchitectureReportInput): Promise<ReporterArchitectureReportOutput>;
 }
