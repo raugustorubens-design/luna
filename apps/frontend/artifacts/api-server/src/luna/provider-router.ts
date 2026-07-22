@@ -17,13 +17,26 @@ import type { ProviderAdapter, ProviderExecutionInput } from "./contracts";
  */
 export interface RoutingCriteria {
   taskType?: string;
+  /**
+   * Dev-mode-only override (see `POST /api/chat`'s `X-Luna-Dev-Mode` gate).
+   * Moves the named provider to the front of the candidate list; the normal
+   * fallback chain still runs behind it if it fails or isn't configured.
+   */
+  preferredProviderId?: string;
 }
 
 export class ProviderRouter {
   constructor(private readonly engine: Map<string, ProviderAdapter> = createProviderEngine()) {}
 
-  async execute(input: ProviderExecutionInput, _criteria: RoutingCriteria = {}): Promise<string> {
-    const candidates = [...this.engine.values()].filter((adapter) => adapter.isConfigured());
+  async execute(input: ProviderExecutionInput, criteria: RoutingCriteria = {}): Promise<string> {
+    let candidates = [...this.engine.values()].filter((adapter) => adapter.isConfigured());
+
+    if (criteria.preferredProviderId) {
+      const preferred = candidates.find((adapter) => adapter.id === criteria.preferredProviderId);
+      if (preferred) {
+        candidates = [preferred, ...candidates.filter((adapter) => adapter !== preferred)];
+      }
+    }
 
     if (candidates.length === 0) {
       throw new Error("No configured provider is available");

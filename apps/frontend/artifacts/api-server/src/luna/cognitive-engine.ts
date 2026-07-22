@@ -8,6 +8,11 @@ export interface CognitiveEngineResponse {
   reply: string;
 }
 
+export interface CognitiveEngineOptions {
+  /** Dev-mode-only provider override — see `POST /api/chat`'s `X-Luna-Dev-Mode` gate. */
+  provider?: string;
+}
+
 /**
  * Cognitive Engine: orchestrates cognition only.
  * - Never persists data directly (delegates to Hipocampo, which delegates to
@@ -16,7 +21,10 @@ export interface CognitiveEngineResponse {
  * - Never accesses a database (no ORM or database client import in this file).
  * Enforced by `scripts/architecture-check.mjs`, not just by convention.
  */
-export async function runCognitiveEngine(message: string): Promise<CognitiveEngineResponse> {
+export async function runCognitiveEngine(
+  message: string,
+  options: CognitiveEngineOptions = {},
+): Promise<CognitiveEngineResponse> {
   emitReport({ name: "cognitive_engine.started" });
 
   emitReport({ name: "memory.retrieval.started" });
@@ -32,7 +40,7 @@ export async function runCognitiveEngine(message: string): Promise<CognitiveEngi
 
   emitReport({ name: "provider_router.execution.started" });
   const providerRouter = new ProviderRouter();
-  const aiReply = await providerRouter.execute({ message, context });
+  const aiReply = await providerRouter.execute({ message, context }, { preferredProviderId: options.provider });
   emitReport({ name: "provider_router.execution.completed" });
 
   const response: CognitiveEngineResponse = { reply: aiReply };
