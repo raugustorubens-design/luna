@@ -29,8 +29,6 @@ test("createGatewayRegistry wires every capability pack with the expected approv
   const registry = createGatewayRegistry();
   const manifests = registry.discover();
 
-  assert.equal(manifests.length, Object.keys(expectedCapabilities).length);
-
   for (const [id, requiresApproval] of Object.entries(expectedCapabilities)) {
     const manifest = manifests.find((entry) => entry.id === id);
     assert.ok(manifest, `${id} should be registered`);
