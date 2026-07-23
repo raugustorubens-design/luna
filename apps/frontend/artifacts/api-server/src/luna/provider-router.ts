@@ -25,11 +25,55 @@ export interface RoutingCriteria {
   preferredProviderId?: string;
 }
 
+/**
+ * ProviderHealth: a recent-error-rate counter per provider, over the last
+ * `HEALTH_WINDOW_SIZE` calls. It *weights* the existing static fallback
+ * order, it doesn't replace it — a provider that's been failing a lot
+ * recently sinks to later in the attempt order via a stable sort, but a
+ * provider with no recent history (or a good one) keeps its static
+ * position. No `DecisionPlan`/`Policy`/`Goal`/`Task` machinery here — that's
+ * documented future direction, not this round's scope.
+ */
+const HEALTH_WINDOW_SIZE = 20;
+
+const healthState = new Map<string, boolean[]>();
+
+export function recordProviderHealth(providerId: string, success: boolean): void {
+  const recent = healthState.get(providerId) ?? [];
+  recent.push(success);
+  if (recent.length > HEALTH_WINDOW_SIZE) {
+    recent.shift();
+  }
+  healthState.set(providerId, recent);
+}
+
+export function getProviderErrorRate(providerId: string): number {
+  const recent = healthState.get(providerId);
+  if (!recent || recent.length === 0) return 0;
+  const failures = recent.filter((success) => !success).length;
+  return failures / recent.length;
+}
+
+export function resetProviderHealth(providerId?: string): void {
+  if (providerId) {
+    healthState.delete(providerId);
+  } else {
+    healthState.clear();
+  }
+}
+
+/** Stable sort by ascending recent error rate — ties keep the static order. */
+function orderByHealth(candidates: ProviderAdapter[]): ProviderAdapter[] {
+  return [...candidates].sort((a, b) => getProviderErrorRate(a.id) - getProviderErrorRate(b.id));
+}
+
 export class ProviderRouter {
   constructor(private readonly engine: Map<string, ProviderAdapter> = createProviderEngine()) {}
 
   async execute(input: ProviderExecutionInput, criteria: RoutingCriteria = {}): Promise<string> {
     let candidates = [...this.engine.values()].filter((adapter) => adapter.isConfigured());
+
+    candidates = orderByHealth(candidates);
 
     if (criteria.preferredProviderId) {
       const preferred = candidates.find((adapter) => adapter.id === criteria.preferredProviderId);
@@ -63,6 +107,7 @@ export class ProviderRouter {
         const elapsedMs = Date.now() - startedAt;
 
         await recordUsage(adapter.id, { elapsedMs, success: true });
+        recordProviderHealth(adapter.id, true);
         emitReport({
           name: "provider.execution.succeeded",
           evidence: { providerId: adapter.id, elapsedMs },
@@ -75,6 +120,7 @@ export class ProviderRouter {
 
         lastError = error;
         await recordUsage(adapter.id, { elapsedMs, success: false });
+        recordProviderHealth(adapter.id, false);
         emitReport({
           name: "provider.execution.failed",
           evidence: { providerId: adapter.id, elapsedMs, message },

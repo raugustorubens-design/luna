@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ProviderRouter } from "../provider-router";
+import { ProviderRouter, resetProviderHealth } from "../provider-router";
 import type { LunaContext, ProviderAdapter, ProviderExecutionInput } from "../contracts";
 
 function stubContext(): LunaContext {
@@ -156,4 +156,63 @@ test("provider router throws the last error when every configured provider fails
     () => router.execute({ message: "hi", context: stubContext() }),
     /second failed/,
   );
+});
+
+test("provider router sinks a provider with a high recent error rate below one with no failures", async () => {
+  resetProviderHealth();
+
+  const flaky = new StubAdapter("flaky", true, async () => "flaky reply");
+  const reliable = new StubAdapter("reliable", true, async () => "reliable reply");
+
+  const warmup = new ProviderRouter(
+    new Map<string, ProviderAdapter>([
+      ["flaky", new StubAdapter("flaky", true, async () => {
+        throw new Error("flaky boom");
+      })],
+      ["reliable", new StubAdapter("reliable", true, async () => "reliable reply")],
+    ]),
+  );
+
+  // Rack up enough recent failures on "flaky" that its error rate dominates
+  // the ordering, without touching "reliable" at all.
+  for (let i = 0; i < 5; i += 1) {
+    await warmup.execute({ message: "hi", context: stubContext() }, { preferredProviderId: "flaky" }).catch(() => {});
+  }
+
+  // Static registration order puts "flaky" first; health should now sink it
+  // behind "reliable" even without a preferred-provider override.
+  const router = new ProviderRouter(
+    new Map<string, ProviderAdapter>([
+      ["flaky", flaky],
+      ["reliable", reliable],
+    ]),
+  );
+
+  const reply = await router.execute({ message: "hi", context: stubContext() });
+
+  assert.equal(reply, "reliable reply");
+  assert.equal(reliable.calls, 1);
+  assert.equal(flaky.calls, 0, "flaky should have been tried after reliable, but reliable already succeeded");
+
+  resetProviderHealth();
+});
+
+test("provider router keeps the static order when no provider has recent history", async () => {
+  resetProviderHealth();
+
+  const first = new StubAdapter("first", true, async () => "first reply");
+  const second = new StubAdapter("second", true, async () => "second reply");
+
+  const router = new ProviderRouter(
+    new Map<string, ProviderAdapter>([
+      ["first", first],
+      ["second", second],
+    ]),
+  );
+
+  const reply = await router.execute({ message: "hi", context: stubContext() });
+
+  assert.equal(reply, "first reply");
+  assert.equal(first.calls, 1);
+  assert.equal(second.calls, 0);
 });

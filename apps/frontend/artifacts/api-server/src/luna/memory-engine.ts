@@ -15,6 +15,61 @@ const MEMORY_TABLE = "memoria_luna";
 const ORIGIN = "memory-engine";
 
 /**
+ * Common PT/EN stopwords (articles, prepositions, conjunctions, pronouns).
+ * Replaces a plain `token.length > 2` filter, which incorrectly dropped
+ * short technical terms ("go", "c", "s3", "ui", "ux", "qa", "pr", "ai").
+ * `TECHNICAL_TERM_ALLOWLIST` guarantees those survive even if a future edit
+ * to this list accidentally overlaps with one of them.
+ */
+const STOPWORDS = new Set([
+  // Portuguese
+  "a", "o", "as", "os", "de", "da", "do", "das", "dos", "em", "um", "uma", "uns", "umas",
+  "para", "por", "com", "sem", "sobre", "entre", "que", "e", "ou", "mas", "se", "não",
+  "é", "são", "foi", "ser", "ao", "aos", "à", "às", "na", "no", "nas", "nos", "como",
+  "mais", "muito", "também", "já", "só", "ele", "ela", "eles", "elas", "eu", "tu",
+  "você", "nós", "isso", "isto", "aquilo", "esse", "essa", "este", "esta", "num", "numa",
+  // English
+  "a", "an", "the", "of", "in", "on", "for", "to", "with", "without", "about", "between",
+  "that", "and", "or", "but", "if", "not", "is", "are", "was", "be", "at", "as", "more",
+  "very", "also", "already", "only", "he", "she", "they", "we", "you", "this", "these",
+  "those", "from", "by", "it", "its",
+]);
+
+const TECHNICAL_TERM_ALLOWLIST = new Set(["go", "c", "s3", "ui", "ux", "qa", "pr", "ai"]);
+
+/**
+ * Deterministic word splitter shared by the Signal Engine (relevance,
+ * novelty, recurrence, entropy all key off this). Pure — no I/O.
+ */
+export function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}_]+/u)
+    .filter(Boolean)
+    .filter((token) => TECHNICAL_TERM_ALLOWLIST.has(token) || !STOPWORDS.has(token));
+}
+
+/**
+ * LexicalSimilarity: Jaccard overlap between two token sets, in [0,1].
+ * This is the only relevance component implemented in v1 — see
+ * `signal-engine.ts` for the components still waiting on real embeddings.
+ */
+export function lexicalSimilarity(tokensA: string[], tokensB: string[]): number {
+  if (tokensA.length === 0 || tokensB.length === 0) return 0;
+
+  const setA = new Set(tokensA);
+  const setB = new Set(tokensB);
+
+  let intersection = 0;
+  for (const token of setA) {
+    if (setB.has(token)) intersection += 1;
+  }
+
+  const union = new Set([...setA, ...setB]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+
+/**
  * Memory Engine: the only cognitive module allowed to reach persistence —
  * and even it never touches a storage driver directly anymore. Every
  * physical operation goes through the Guardian's contract (Guardian MVP-01);

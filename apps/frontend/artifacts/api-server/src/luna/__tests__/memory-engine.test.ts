@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createMemoryEngine } from "../memory-engine";
+import { createMemoryEngine, lexicalSimilarity, tokenize } from "../memory-engine";
 import type { GuardianContract, StorageRecord } from "../guardian-contract";
 
 function stubGuardian(overrides?: {
@@ -107,4 +107,50 @@ test("memory engine persistMemory never throws even when Guardian.save fails", a
   const engine = createMemoryEngine(guardian);
 
   await assert.doesNotReject(() => engine.persistMemory({ tipo: "x", contexto: "x", titulo: "x", empresa_id: 1, conteudo: {} }));
+});
+
+test("tokenize drops PT/EN stopwords but keeps short technical terms", () => {
+  const tokens = tokenize("Go and the S3 UI is a UX QA tool for a PR with AI, and it is very great");
+
+  assert.ok(tokens.includes("go"), "go should survive");
+  assert.ok(tokens.includes("s3"), "s3 should survive");
+  assert.ok(tokens.includes("ui"), "ui should survive");
+  assert.ok(tokens.includes("ux"), "ux should survive");
+  assert.ok(tokens.includes("qa"), "qa should survive");
+  assert.ok(tokens.includes("pr"), "pr should survive");
+  assert.ok(tokens.includes("ai"), "ai should survive");
+  assert.ok(!tokens.includes("and"), "stopword 'and' should be dropped");
+  assert.ok(!tokens.includes("the"), "stopword 'the' should be dropped");
+  assert.ok(!tokens.includes("is"), "stopword 'is' should be dropped");
+  assert.ok(!tokens.includes("a"), "stopword 'a' should be dropped");
+  assert.ok(!tokens.includes("for"), "stopword 'for' should be dropped");
+  assert.ok(!tokens.includes("with"), "stopword 'with' should be dropped");
+  assert.ok(!tokens.includes("it"), "stopword 'it' should be dropped");
+  assert.ok(!tokens.includes("very"), "stopword 'very' should be dropped");
+});
+
+test("tokenize drops Portuguese stopwords", () => {
+  const tokens = tokenize("A memória do sistema é para o usuário, mas não é sempre relevante");
+
+  assert.ok(!tokens.includes("a"));
+  assert.ok(!tokens.includes("do"));
+  assert.ok(!tokens.includes("é"));
+  assert.ok(!tokens.includes("para"));
+  assert.ok(!tokens.includes("o"));
+  assert.ok(!tokens.includes("mas"));
+  assert.ok(!tokens.includes("não"));
+  assert.ok(tokens.includes("memória"));
+  assert.ok(tokens.includes("sistema"));
+  assert.ok(tokens.includes("usuário"));
+  assert.ok(tokens.includes("relevante"));
+});
+
+test("lexicalSimilarity is 1 for identical token sets and 0 for disjoint sets", () => {
+  assert.equal(lexicalSimilarity(["go", "s3"], ["go", "s3"]), 1);
+  assert.equal(lexicalSimilarity(["go", "s3"], ["ui", "ux"]), 0);
+});
+
+test("lexicalSimilarity returns 0 when either side is empty", () => {
+  assert.equal(lexicalSimilarity([], ["go"]), 0);
+  assert.equal(lexicalSimilarity(["go"], []), 0);
 });
