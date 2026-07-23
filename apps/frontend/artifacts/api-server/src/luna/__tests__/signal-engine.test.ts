@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { computeMemorySignals, type MemoryObject } from "../signal-engine";
+import { computeMemorySignals, DefaultSignalCalculator, type MemoryObject, type SignalCalculator } from "../signal-engine";
 
 test("signal engine: brand new content with no existing memories is maximally novel and non-recurrent", () => {
   const candidate: MemoryObject = { key: "capital_brasil", content: "a capital do brasil é brasília" };
@@ -13,7 +13,7 @@ test("signal engine: brand new content with no existing memories is maximally no
   assert.equal(signals.entropy, 0);
   assert.equal(signals.impact, 1);
   assert.equal(signals.outcome, 0);
-  assert.equal(signals.explanation?.outcome, "OutcomeProvider não implementado");
+  assert.deepEqual(signals.explanation?.outcome, ["OutcomeProvider não implementado"]);
 });
 
 test("signal engine: near-duplicate content against an existing memory has high relevance and low novelty", () => {
@@ -33,7 +33,7 @@ test("signal engine: outcome is always 0 with the documented explanation, regard
   const signals = computeMemorySignals({ content: "qualquer coisa" }, [{ content: "outra coisa" }]);
 
   assert.equal(signals.outcome, 0);
-  assert.equal(signals.explanation?.outcome, "OutcomeProvider não implementado");
+  assert.deepEqual(signals.explanation?.outcome, ["OutcomeProvider não implementado"]);
 });
 
 test("signal engine: recurrence counts repeated similar memories, decayed by age", () => {
@@ -64,7 +64,7 @@ test("signal engine: entropy flags conflict for same-topic content with low lexi
   const signals = computeMemorySignals(candidate, existing);
 
   assert.ok(signals.entropy > 0, "expected entropy to detect the conflicting claim");
-  assert.match(signals.explanation?.entropy ?? "", /conflito/);
+  assert.match((signals.explanation?.entropy ?? []).join(" "), /conflito/);
 });
 
 test("signal engine: entropy is 0 when there is no existing memory sharing the candidate's key", () => {
@@ -83,12 +83,20 @@ test("signal engine: entropy is 0 (not computable) when the candidate has no key
   const signals = computeMemorySignals(candidate, existing);
 
   assert.equal(signals.entropy, 0);
-  assert.match(signals.explanation?.entropy ?? "", /não computável/);
+  assert.match((signals.explanation?.entropy ?? []).join(" "), /não computável/);
 });
 
 test("signal engine: impact is documented as a provisional novelty proxy", () => {
   const signals = computeMemorySignals({ content: "x" }, []);
 
   assert.equal(signals.impact, signals.novelty);
-  assert.match(signals.explanation?.impact ?? "", /provisório/);
+  assert.match((signals.explanation?.impact ?? []).join(" "), /provisório/);
+});
+
+test("signal engine: exposed via the SignalCalculator interface, swappable in principle", () => {
+  const calculator: SignalCalculator = new DefaultSignalCalculator();
+  const signals = calculator.calculate({ content: "olá" }, []);
+
+  assert.equal(signals.novelty, 1);
+  assert.equal(signals.outcome, 0);
 });

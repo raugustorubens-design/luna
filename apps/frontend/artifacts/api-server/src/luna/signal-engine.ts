@@ -1,7 +1,7 @@
 // src/luna/signal-engine.ts
 //
-// Signal Engine: a pure function that turns a memory candidate + the
-// existing memories relevant to it into a `MemorySignals` reading.
+// Signal Engine: turns a memory candidate + the existing memories relevant
+// to it into a `MemorySignals` reading.
 //
 // Non-negotiable rule: this file never queries, persists, calls a
 // provider, caches, or calls an LLM. Callers fetch whatever existing
@@ -23,6 +23,16 @@ export interface MemoryObject {
   content: unknown;
   /** ISO timestamp. Used for recurrence's temporal decay. */
   createdAt?: string;
+}
+
+/**
+ * Signal Engine as an interface, not a loose function: `DefaultSignalCalculator`
+ * is today's (lexical-only) implementation, but this seam lets a future
+ * implementation (e.g. embeddings-backed) be swapped in without touching
+ * anything else that depends on `MemorySignals`.
+ */
+export interface SignalCalculator {
+  calculate(memory: MemoryObject, existing: MemoryObject[]): MemorySignals;
 }
 
 /** Recurrence's temporal decay rate (per day). Not tuned against real usage data yet — a placeholder that at least decays. */
@@ -63,14 +73,14 @@ interface SimilarityEntry {
 function computeEntropy(
   candidate: MemoryObject,
   similarities: SimilarityEntry[],
-): { entropy: number; explanation: string } {
+): { entropy: number; explanation: string[] } {
   if (!candidate.key) {
-    return { entropy: 0, explanation: "candidato sem key — conflito de tópico não computável nesta v1" };
+    return { entropy: 0, explanation: ["candidato sem key — conflito de tópico não computável nesta v1"] };
   }
 
   const sameTopic = similarities.filter((entry) => entry.memory.key === candidate.key);
   if (sameTopic.length === 0) {
-    return { entropy: 0, explanation: `nenhuma memória existente com o mesmo tópico (key="${candidate.key}")` };
+    return { entropy: 0, explanation: [`nenhuma memória existente com o mesmo tópico (key="${candidate.key}")`] };
   }
 
   const lowestContentSimilarity = Math.min(...sameTopic.map((entry) => entry.similarity));
@@ -79,71 +89,99 @@ function computeEntropy(
   if (!conflict) {
     return {
       entropy: 0,
-      explanation: `mesmo tópico (key="${candidate.key}"), sem conflito de conteúdo detectado (similaridade mínima ${lowestContentSimilarity.toFixed(2)})`,
+      explanation: [
+        `mesmo tópico (key="${candidate.key}"), sem conflito de conteúdo detectado (similaridade mínima ${lowestContentSimilarity.toFixed(2)})`,
+      ],
     };
   }
 
   return {
     entropy: 1 - lowestContentSimilarity,
-    explanation: `mesmo tópico (key="${candidate.key}") com baixa similaridade de conteúdo (${lowestContentSimilarity.toFixed(2)}) — possível conflito`,
+    explanation: [
+      `mesmo tópico (key="${candidate.key}") com baixa similaridade de conteúdo (${lowestContentSimilarity.toFixed(2)}) — possível conflito`,
+    ],
   };
 }
 
 /**
- * Computes the six memory signals for `candidate` against `existingMemories`
- * (already fetched by the caller — this function never fetches anything
- * itself).
+ * v1 (lexical-only) implementation of `SignalCalculator`. See individual
+ * private methods for what each signal does and does not account for yet.
  */
+export class DefaultSignalCalculator implements SignalCalculator {
+  calculate(candidate: MemoryObject, existingMemories: MemoryObject[]): MemorySignals {
+    const candidateTokens = tokenize(contentText(candidate.content));
+    const referenceTime = candidate.createdAt ?? new Date().toISOString();
+
+    const similarities: SimilarityEntry[] = existingMemories.map((memory) => ({
+      memory,
+      similarity: lexicalSimilarity(candidateTokens, tokenize(contentText(memory.content))),
+    }));
+
+    const maxSimilarity = similarities.reduce((max, entry) => Math.max(max, entry.similarity), 0);
+
+    // V1 intencionalmente só léxico. NÃO aumentar complexidade
+    // heurística aqui (regex, stemming, sinônimos). SemanticSimilarity,
+    // GoalAlignment e MemoryTypeWeight pertencem a versões futuras,
+    // depois que embeddings existirem.
+    const relevance = maxSimilarity;
+
+    const novelty = 1 - maxSimilarity;
+
+    const recurrenceRaw = similarities
+      .filter((entry) => entry.similarity >= RECURRENCE_SIMILARITY_THRESHOLD)
+      .reduce((sum, entry) => {
+        const ageDays = entry.memory.createdAt ? daysBetween(referenceTime, entry.memory.createdAt) : 0;
+        return sum + entry.similarity * Math.exp(-RECURRENCE_DECAY_LAMBDA * ageDays);
+      }, 0);
+    const recurrence = Math.min(1, recurrenceRaw);
+    const recurrenceCount = similarities.filter((entry) => entry.similarity >= RECURRENCE_SIMILARITY_THRESHOLD).length;
+
+    const { entropy, explanation: entropyExplanation } = computeEntropy(candidate, similarities);
+
+    // impact — v1 has no better source, so novelty is used as a temporary
+    // proxy. Real Utility Gain needs a better signal (e.g. detecting
+    // decision/architecture-changing keywords) — not implemented yet, only
+    // documented as a known limitation.
+    const impact = novelty;
+
+    return {
+      relevance,
+      novelty,
+      recurrence,
+      entropy,
+      impact,
+      outcome: 0,
+      explanation: {
+        relevance: [
+          `LexicalSimilarity máxima contra ${existingMemories.length} memória(s) existente(s) = ${relevance.toFixed(2)}`,
+          "SemanticSimilarity, GoalAlignment, Recency e MemoryTypeWeight aguardam embeddings reais (peso 0)",
+        ],
+        novelty: [`1 − similaridade léxica máxima (${maxSimilarity.toFixed(2)})`],
+        recurrence: [
+          `${recurrenceCount} ocorrência(s) semanticamente semelhante(s) (limiar ${RECURRENCE_SIMILARITY_THRESHOLD})`,
+          `decaimento exp(-λt), λ=${RECURRENCE_DECAY_LAMBDA}`,
+        ],
+        entropy: entropyExplanation,
+        impact: [
+          "proxy provisório = novelty",
+          "Utility Gain real precisa de fonte melhor (ex.: detecção de palavras-chave de mudança de decisão/arquitetura), não implementada ainda",
+        ],
+        outcome: ["OutcomeProvider não implementado"],
+      },
+    };
+  }
+}
+
+/**
+ * Future direction, not implemented here: an "Evidence Engine" that
+ * normalizes evidence from multiple sources before it reaches the Signal
+ * Engine. Out of scope for this round — `SignalCalculator`'s signature is
+ * deliberately not expanded to anticipate it.
+ */
+
+const defaultSignalCalculator = new DefaultSignalCalculator();
+
+/** Convenience wrapper around `DefaultSignalCalculator` for simple call sites. */
 export function computeMemorySignals(candidate: MemoryObject, existingMemories: MemoryObject[]): MemorySignals {
-  const candidateTokens = tokenize(contentText(candidate.content));
-  const referenceTime = candidate.createdAt ?? new Date().toISOString();
-
-  const similarities: SimilarityEntry[] = existingMemories.map((memory) => ({
-    memory,
-    similarity: lexicalSimilarity(candidateTokens, tokenize(contentText(memory.content))),
-  }));
-
-  const maxSimilarity = similarities.reduce((max, entry) => Math.max(max, entry.similarity), 0);
-
-  // relevance — v1 uses only LexicalSimilarity. SemanticSimilarity,
-  // GoalAlignment, Recency and MemoryTypeWeight stay at weight 0: they need
-  // real embeddings / goal state / recency data that don't exist yet, and
-  // fabricating them would misrepresent this component's real maturity.
-  const relevance = maxSimilarity;
-
-  const novelty = 1 - maxSimilarity;
-
-  const recurrenceRaw = similarities
-    .filter((entry) => entry.similarity >= RECURRENCE_SIMILARITY_THRESHOLD)
-    .reduce((sum, entry) => {
-      const ageDays = entry.memory.createdAt ? daysBetween(referenceTime, entry.memory.createdAt) : 0;
-      return sum + entry.similarity * Math.exp(-RECURRENCE_DECAY_LAMBDA * ageDays);
-    }, 0);
-  const recurrence = Math.min(1, recurrenceRaw);
-  const recurrenceCount = similarities.filter((entry) => entry.similarity >= RECURRENCE_SIMILARITY_THRESHOLD).length;
-
-  const { entropy, explanation: entropyExplanation } = computeEntropy(candidate, similarities);
-
-  // impact — v1 has no better source, so novelty is used as a temporary
-  // proxy. Real Utility Gain needs a better signal (e.g. detecting
-  // decision/architecture-changing keywords) — not implemented yet, only
-  // documented as a known limitation.
-  const impact = novelty;
-
-  return {
-    relevance,
-    novelty,
-    recurrence,
-    entropy,
-    impact,
-    outcome: 0,
-    explanation: {
-      relevance: `LexicalSimilarity máxima contra ${existingMemories.length} memória(s) existente(s) = ${relevance.toFixed(2)}; SemanticSimilarity, GoalAlignment, Recency e MemoryTypeWeight aguardam embeddings reais (peso 0)`,
-      novelty: `1 − similaridade léxica máxima (${maxSimilarity.toFixed(2)})`,
-      recurrence: `${recurrenceCount} ocorrência(s) semanticamente semelhante(s) (limiar ${RECURRENCE_SIMILARITY_THRESHOLD}), com decaimento exp(-λt), λ=${RECURRENCE_DECAY_LAMBDA}`,
-      entropy: entropyExplanation,
-      impact: "proxy provisório = novelty; Utility Gain real precisa de fonte melhor (ex.: detecção de palavras-chave de mudança de decisão/arquitetura), não implementada ainda",
-      outcome: "OutcomeProvider não implementado",
-    },
-  };
+  return defaultSignalCalculator.calculate(candidate, existingMemories);
 }

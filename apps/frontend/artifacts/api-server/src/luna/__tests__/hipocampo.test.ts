@@ -12,7 +12,7 @@ function stubSignals(overrides: Partial<MemorySignals> = {}): MemorySignals {
     entropy: 0,
     impact: 1,
     outcome: 0,
-    explanation: { outcome: "OutcomeProvider não implementado" },
+    explanation: { outcome: ["OutcomeProvider não implementado"] },
     ...overrides,
   };
 }

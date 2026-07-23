@@ -26,32 +26,32 @@ export interface RoutingCriteria {
 }
 
 /**
- * ProviderHealth: a recent-error-rate counter per provider, over the last
- * `HEALTH_WINDOW_SIZE` calls. It *weights* the existing static fallback
- * order, it doesn't replace it — a provider that's been failing a lot
- * recently sinks to later in the attempt order via a stable sort, but a
- * provider with no recent history (or a good one) keeps its static
- * position. No `DecisionPlan`/`Policy`/`Goal`/`Task` machinery here — that's
- * documented future direction, not this round's scope.
+ * ProviderHealth: an exponential moving average of provider success per
+ * call. It *weights* the existing static fallback order, it doesn't
+ * replace it — a provider that's been failing a lot recently sinks to
+ * later in the attempt order via a stable sort, but a provider with no
+ * recent history (or a good one) keeps its static position.
+ *
+ * EMA instead of a fixed-size window: a fixed window makes health jump
+ * discontinuously the instant an old call ages out of it, even though
+ * nothing about the provider actually changed at that moment. EMA decays
+ * smoothly instead. No `DecisionPlan`/`Policy`/`Goal`/`Task` machinery
+ * here — that's documented future direction, not this round's scope.
  */
-const HEALTH_WINDOW_SIZE = 20;
+const HEALTH_EMA_ALPHA = 0.1;
 
-const healthState = new Map<string, boolean[]>();
+/** healthScore in [0,1], 1 = perfectly healthy. No entry yet = assumed healthy (error rate 0), same as the router's pre-ProviderHealth behavior. */
+const healthState = new Map<string, number>();
 
 export function recordProviderHealth(providerId: string, success: boolean): void {
-  const recent = healthState.get(providerId) ?? [];
-  recent.push(success);
-  if (recent.length > HEALTH_WINDOW_SIZE) {
-    recent.shift();
-  }
-  healthState.set(providerId, recent);
+  const previous = healthState.get(providerId) ?? 1;
+  const updated = previous * (1 - HEALTH_EMA_ALPHA) + (success ? 1 : 0) * HEALTH_EMA_ALPHA;
+  healthState.set(providerId, updated);
 }
 
 export function getProviderErrorRate(providerId: string): number {
-  const recent = healthState.get(providerId);
-  if (!recent || recent.length === 0) return 0;
-  const failures = recent.filter((success) => !success).length;
-  return failures / recent.length;
+  const healthScore = healthState.get(providerId) ?? 1;
+  return 1 - healthScore;
 }
 
 export function resetProviderHealth(providerId?: string): void {
