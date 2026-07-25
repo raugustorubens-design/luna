@@ -12,7 +12,7 @@ const pipeline = new ConvergiaPipeline();
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-const SUPPORTED_INPUT_FORMATS: ConvergiaInputFormat[] = ["xlsx", "csv", "json"];
+const SUPPORTED_INPUT_FORMATS: ConvergiaInputFormat[] = ["xlsx", "csv", "json", "pptx"];
 
 function resolveInputFormat(explicit: unknown, filename: string): ConvergiaInputFormat {
   const candidate = typeof explicit === "string" ? explicit.toLowerCase() : filename.split(".").pop()?.toLowerCase();

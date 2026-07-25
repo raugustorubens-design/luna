@@ -10,7 +10,7 @@
  * renderer format-specific data directly — everything crosses through here.
  */
 
-export type ConvergiaInputFormat = "xlsx" | "csv" | "json";
+export type ConvergiaInputFormat = "xlsx" | "csv" | "json" | "pptx";
 
 export type ConvergiaOutputFormat = "csv" | "json" | "markdown" | "html" | "xlsx" | "pptx";
 
