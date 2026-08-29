@@ -12,6 +12,7 @@ Esta pasta contém os insumos arquitetônicos que o Claude deve analisar e trans
 4. `03-SE-CONHECER-MAPA-DO-MOMENTO.md`
 5. `04-PREPARACAO-TESTES-E-AVALIACOES-PROCESSOS-SELETIVOS.md`
 6. `05-MODULO-PAGO-PERSONALIDADE-E-COMPORTAMENTO.md`
+7. `06-MODULO-PAGO-RACIOCINIO-E-APTIDOES.md`
 
 ## Decisões obrigatórias
 
