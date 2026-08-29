@@ -9,6 +9,8 @@ Esta pasta contém os insumos arquitetônicos que o Claude deve analisar e trans
 1. `00-FOCO-PROJETO-ARQUITETONICO-SITE-LUNA.md`
 2. `01-REFERENCIAS-VIBE-DESIGN-LUNA.md`
 3. `02-SE-CONHECER-ORIENTACAO-E-SOCORRO-PUBLICO.md`
+4. `03-SE-CONHECER-MAPA-DO-MOMENTO.md`
+5. `04-PREPARACAO-TESTES-E-AVALIACOES-PROCESSOS-SELETIVOS.md`
 
 ## Decisões obrigatórias
 
@@ -16,6 +18,9 @@ Esta pasta contém os insumos arquitetônicos que o Claude deve analisar e trans
 - A primeira implantação é **Se conhecer**.
 - Orientação e contatos de socorro são públicos, gratuitos, estáticos e fora do plano pago.
 - A página de socorro não usa IA, GPT, token, Connector Hub, login, triagem, diagnóstico, coleta de localização ou dados sensíveis.
+- O Mapa do Momento é gratuito, determinístico, não clínico e funciona sem IA.
+- A preparação personalizada para testes psicológicos e outras avaliações de processos seletivos é um serviço pago escolhido pela própria pessoa.
+- A preparação não é antagonista de nenhuma plataforma, não reproduz testes protegidos e não promete aprovação.
 - Renascer público e Casa de Máquinas são superfícies distintas.
 - Não usar roxo, violeta ou magenta.
 - Referências externas são repertório técnico; não devem ser copiadas integralmente.
