@@ -91,7 +91,7 @@ Navegação pública prevista: **Início, Capacidades, Trilhas, Para Empresas, S
 
 ### Primeira implantação
 
-A primeira porta a ser detalhada e implantada é **Se conhecer**. Segurança e Operação Industrial permanece como porta estratégica sustentada pelo Caderno de Treinamentos SSMA, mas não é a primeira implantação.
+A primeira porta a ser detalhada e implantada é **Se conhecer**. **Trabalhar com segurança** permanece como porta estratégica sustentada pelo Caderno de Treinamentos SSMA, mas não é a primeira implantação.
 
 ## 4. Direção visual
 
