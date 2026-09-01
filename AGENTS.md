@@ -99,3 +99,13 @@ USER
 → Groq
 → Resposta
 → persistInteraction
+
+---
+
+## Fonte Canônica do Projeto Arquitetônico
+
+A única fonte arquitetônica do ecossistema é:
+
+`https://github.com/raugustorubens-design/Luna-context.md/tree/main/GENESIS/projeto-arquitetonico`
+
+Este repositório é runtime e superfície de implementação. Não criar, copiar ou manter `GENESIS/projeto-arquitetonico/` aqui. Claude e Code devem consumir os pacotes no repositório canônico e registrar neste repositório somente especificações técnicas, implementação, testes e evidências.
